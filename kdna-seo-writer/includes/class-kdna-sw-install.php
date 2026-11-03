@@ -19,7 +19,7 @@ final class KDNA_SeoWriter_Install {
 	/**
 	 * The current version of the table layout.
 	 */
-	public const DB_VERSION = '1';
+	public const DB_VERSION = '2';
 
 	/**
 	 * Where the installed table layout version is remembered.
@@ -114,6 +114,7 @@ final class KDNA_SeoWriter_Install {
 			kind varchar(20) NOT NULL DEFAULT 'change',
 			object_type varchar(20) NOT NULL DEFAULT '',
 			object_id bigint(20) unsigned NOT NULL DEFAULT 0,
+			object_subtype varchar(64) NOT NULL DEFAULT '',
 			field varchar(40) NOT NULL DEFAULT '',
 			old_value longtext NULL,
 			new_value longtext NULL,

@@ -89,6 +89,7 @@ final class KDNA_SeoWriter_Settings {
 			'advanced'   => array(
 				'desc_min'       => 120,
 				'desc_max'       => 156,
+				'title_min_px'   => 400,
 				'title_max_px'   => 600,
 				'kp_min_words'   => 1,
 				'kp_max_words'   => 4,

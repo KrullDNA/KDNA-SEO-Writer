@@ -63,6 +63,13 @@ final class KDNA_SeoWriter_Plugin {
 		add_action( 'admin_init', array( 'KDNA_SeoWriter_Install', 'maybe_upgrade' ) );
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 
+		// Keep the keyphrase register up to date when any keyphrase changes.
+		KDNA_SeoWriter_Keyphrases::hooks();
+
+		if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( 'WP_CLI' ) ) {
+			WP_CLI::add_command( 'kdna-sw', 'KDNA_SeoWriter_Cli' );
+		}
+
 		if ( is_admin() ) {
 			KDNA_SeoWriter_Admin::instance()->hooks();
 		}

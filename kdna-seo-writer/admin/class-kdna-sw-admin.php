@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin screens: the settings page and debug mode.
+ * Admin screens: the settings page.
  *
  * @package KDNA_SeoWriter
  */
@@ -8,7 +8,7 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Adds Settings > KDNA SEO Writer and the debug panel on edit screens.
+ * Adds Settings > KDNA SEO Writer. Debug mode lives in KDNA_SeoWriter_Debug.
  *
  * Scripts and styles are only loaded on the plugin's own settings screen,
  * never on other admin screens and never on the front end.
@@ -56,22 +56,7 @@ final class KDNA_SeoWriter_Admin {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( KDNA_SW_FILE ), array( $this, 'action_links' ) );
 
-		add_action( 'admin_init', array( $this, 'maybe_add_debug' ) );
-	}
-
-	/**
-	 * Switches on the debug panels when an administrator adds ?kdna_sw_debug=1.
-	 *
-	 * This runs on admin_init, once WordPress knows who is logged in.
-	 *
-	 * @return void
-	 */
-	public function maybe_add_debug(): void {
-		if ( ! self::debug_requested() ) {
-			return;
-		}
-		add_action( 'add_meta_boxes', array( $this, 'add_debug_meta_box' ), 10, 2 );
-		$this->add_term_debug_hooks();
+		KDNA_SeoWriter_Debug::instance()->hooks();
 	}
 
 	/**
@@ -239,95 +224,5 @@ final class KDNA_SeoWriter_Admin {
 			return;
 		}
 		require KDNA_SW_DIR . 'admin/views/settings-page.php';
-	}
-
-	/**
-	 * Tells you whether an administrator has asked for debug mode (?kdna_sw_debug=1).
-	 *
-	 * @return bool
-	 */
-	public static function debug_requested(): bool {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only display switch, checked against capability below.
-		if ( ! isset( $_GET['kdna_sw_debug'] ) || '1' !== $_GET['kdna_sw_debug'] ) {
-			return false;
-		}
-		return current_user_can( 'manage_options' );
-	}
-
-	/**
-	 * Adds the debug panel to the post edit screen when debug mode is on.
-	 *
-	 * @param string $post_type Post type being edited.
-	 * @param mixed  $post      The post being edited.
-	 * @return void
-	 */
-	public function add_debug_meta_box( string $post_type, $post ): void {
-		if ( ! $post instanceof WP_Post || 'attachment' === $post_type || ! current_user_can( 'edit_post', $post->ID ) ) {
-			return;
-		}
-
-		add_meta_box(
-			'kdna-sw-debug',
-			__( 'KDNA SEO Writer: debug', 'kdna-seo-writer' ),
-			function ( WP_Post $current ) {
-				$this->render_debug( KDNA_SeoWriter_Reader::read_post( (int) $current->ID ) );
-			},
-			null,
-			'normal',
-			'high'
-		);
-	}
-
-	/**
-	 * Adds the debug panel to category and tag edit screens when debug mode is on.
-	 *
-	 * @return void
-	 */
-	private function add_term_debug_hooks(): void {
-		foreach ( get_taxonomies( array( 'show_ui' => true ) ) as $taxonomy ) {
-			add_action(
-				"{$taxonomy}_edit_form",
-				function ( $term ) {
-					if ( $term instanceof WP_Term ) {
-						echo '<div class="postbox" style="margin-top:20px;padding:0 12px 12px;"><h2>' . esc_html__( 'KDNA SEO Writer: debug', 'kdna-seo-writer' ) . '</h2>';
-						$this->render_debug( KDNA_SeoWriter_Reader::read_term( (int) $term->term_id, $term->taxonomy ) );
-						echo '</div>';
-					}
-				}
-			);
-		}
-	}
-
-	/**
-	 * Prints what the page reader produced for an item, for administrators.
-	 *
-	 * This shows the text that would be sent to Claude. It never shows the API
-	 * key or any other setting.
-	 *
-	 * @param array<string, mixed> $read Reader result.
-	 * @return void
-	 */
-	private function render_debug( array $read ): void {
-		$row = static function ( string $label, string $value ): void {
-			echo '<tr><th scope="row" style="text-align:left;vertical-align:top;padding:4px 12px 4px 0;width:170px;">' . esc_html( $label ) . '</th><td style="padding:4px 0;">' . esc_html( $value ) . '</td></tr>';
-		};
-
-		echo '<p>' . esc_html__( 'This is the text the page reader builds for this item, which is what Claude will be given. Only administrators can see this. The API key is never shown here.', 'kdna-seo-writer' ) . '</p>';
-		echo '<table style="border-collapse:collapse;width:100%;"><tbody>';
-
-		$row( __( 'Status', 'kdna-seo-writer' ), $read['ok'] ? __( 'Ready to send', 'kdna-seo-writer' ) : (string) $read['message'] );
-		$row( __( 'Read from', 'kdna-seo-writer' ), implode( ', ', (array) $read['sources'] ) );
-		$row( __( 'Words', 'kdna-seo-writer' ), (string) $read['word_count'] . ( $read['trimmed'] ? ' ' . __( '(trimmed before sending)', 'kdna-seo-writer' ) : '' ) );
-		$row(
-			__( 'H1', 'kdna-seo-writer' ),
-			(string) $read['h1'] . ( 'title' === $read['h1_from'] ? ' ' . __( '(no H1 in the content, so the title is used)', 'kdna-seo-writer' ) : '' )
-		);
-		$row( __( 'First paragraph', 'kdna-seo-writer' ), (string) $read['first_paragraph'] );
-		$row( __( 'H2 headings', 'kdna-seo-writer' ), implode( ' | ', (array) $read['h2'] ) );
-		$row( __( 'H3 headings', 'kdna-seo-writer' ), implode( ' | ', (array) $read['h3'] ) );
-
-		echo '</tbody></table>';
-		echo '<h3>' . esc_html__( 'Full text', 'kdna-seo-writer' ) . '</h3>';
-		echo '<pre style="white-space:pre-wrap;max-height:420px;overflow:auto;background:#f6f7f7;padding:12px;border:1px solid #dcdcde;">' . esc_html( (string) $read['text'] ) . '</pre>';
 	}
 }
