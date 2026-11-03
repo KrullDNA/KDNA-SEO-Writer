@@ -61,7 +61,23 @@ final class KDNA_SeoWriter_State {
 			'skipped'      => (string) ( $raw['skipped'] ?? '' ),
 			'last'         => isset( $raw['last'] ) && is_array( $raw['last'] ) ? $raw['last'] : array(),
 			'job'          => (int) ( $raw['job'] ?? 0 ),
+			'suggestions'  => isset( $raw['suggestions'] ) && is_array( $raw['suggestions'] ) ? $raw['suggestions'] : array(),
 		);
+	}
+
+	/**
+	 * Keeps Claude's latest slug, opening line and heading suggestions, for the
+	 * keyphrase report.
+	 *
+	 * @param string               $object_type Either post or term.
+	 * @param int                  $id          Post or term ID.
+	 * @param array<string, mixed> $suggestions slug, opening_line, headings, and the keyphrase they were written for.
+	 * @return void
+	 */
+	public static function set_suggestions( string $object_type, int $id, array $suggestions ): void {
+		$state                = self::get( $object_type, $id );
+		$state['suggestions'] = $suggestions;
+		self::save( $object_type, $id, $state );
 	}
 
 	/**

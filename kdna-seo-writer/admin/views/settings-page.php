@@ -45,14 +45,7 @@ $kdna_sw_tabs = array(
 	require __DIR__ . '/tab-review.php';
 	?>
 
-	<?php foreach ( array( 'keyphrases' ) as $kdna_sw_id ) : ?>
-		<section class="kdna-sw-panel" role="tabpanel" id="kdna-sw-panel-<?php echo esc_attr( $kdna_sw_id ); ?>" aria-labelledby="kdna-sw-tab-<?php echo esc_attr( $kdna_sw_id ); ?>" x-show="tab === '<?php echo esc_js( $kdna_sw_id ); ?>'">
-			<div class="kdna-sw-card">
-				<h2><?php echo esc_html( $kdna_sw_tabs[ $kdna_sw_id ] ); ?></h2>
-				<p class="description"><?php esc_html_e( 'This section is being built in a later stage. Nothing here changes your site yet.', 'kdna-seo-writer' ); ?></p>
-			</div>
-		</section>
-	<?php endforeach; ?>
+	<?php require __DIR__ . '/tab-keyphrases.php'; ?>
 
 	<!-- Connection -->
 	<section class="kdna-sw-panel" role="tabpanel" id="kdna-sw-panel-connection" aria-labelledby="kdna-sw-tab-connection" x-show="tab === 'connection'">

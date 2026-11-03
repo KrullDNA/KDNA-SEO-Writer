@@ -579,6 +579,7 @@ final class KDNA_SeoWriter_Rules {
 			'og_description'   => __( 'Social description', 'kdna-seo-writer' ),
 			'x_title'          => __( 'X title', 'kdna-seo-writer' ),
 			'x_description'    => __( 'X description', 'kdna-seo-writer' ),
+			'alt_text'         => __( 'Image alt text', 'kdna-seo-writer' ),
 		);
 		return $labels[ $field ] ?? $field;
 	}

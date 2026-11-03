@@ -375,3 +375,37 @@
 		flex-direction: row;
 	}
 }
+
+/* ---- Keyphrases tab and image suggestions ---- */
+
+.kdna-sw-thumb {
+	display: block;
+	max-width: 160px;
+	max-height: 120px;
+	margin: 0 0 8px;
+	border: 1px solid var(--kdna-sw-line);
+	border-radius: 4px;
+	object-fit: contain;
+	background: var(--kdna-sw-pill-bg);
+}
+
+.kdna-sw-report-rows {
+	margin: 0;
+}
+
+.kdna-sw-report-rows li {
+	padding: 8px 0;
+	border-bottom: 1px solid var(--kdna-sw-line);
+}
+
+.kdna-sw-report-rows p {
+	margin: 4px 0;
+}
+
+.kdna-sw-suggest code {
+	white-space: normal;
+}
+
+.kdna-sw-warning {
+	color: var(--kdna-sw-bad);
+}

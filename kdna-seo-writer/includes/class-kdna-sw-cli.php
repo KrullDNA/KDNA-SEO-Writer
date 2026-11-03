@@ -19,6 +19,8 @@ defined( 'ABSPATH' ) || exit;
  *     wp kdna-sw undo 15
  *     wp kdna-sw sweep
  *     wp kdna-sw sweep --now
+ *     wp kdna-sw alt 88 --context=42
+ *     wp kdna-sw report 42
  */
 final class KDNA_SeoWriter_Cli {
 
@@ -160,6 +162,75 @@ final class KDNA_SeoWriter_Cli {
 			WP_CLI::log( sprintf( '%s %d (%s): %s', $item['type'], $item['id'], $item['subtype'], $last['message'] ?? '' ) );
 		}
 		WP_CLI::success( 'Sweep finished.' );
+	}
+
+	/**
+	 * Writes alt text for one image and shows it with its checks.
+	 *
+	 * Nothing is saved: with --queue the suggestion goes to the Review tab.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <id>
+	 * : Attachment ID.
+	 *
+	 * [--context=<post-id>]
+	 * : The page the image is on.
+	 *
+	 * [--queue]
+	 * : Put the suggestion in the review queue.
+	 *
+	 * @param array<int, string>    $args       Positional arguments.
+	 * @param array<string, string> $assoc_args Named arguments.
+	 * @return void
+	 */
+	public function alt( array $args, array $assoc_args ): void {
+		$id      = (int) $args[0];
+		$context = (int) ( $assoc_args['context'] ?? 0 );
+		$result  = KDNA_SeoWriter_Alt_Text::generate( $id, $context );
+
+		WP_CLI::log( 'Status:             ' . $result['status'] . ' (' . $result['message'] . ')' );
+		WP_CLI::log( 'Keyphrase allowed:  ' . ( $result['keyphrase_allowed'] ? 'yes' : 'no' ) );
+		WP_CLI::log( 'Alt text:           ' . $result['alt'] );
+		foreach ( $result['checks'] as $check ) {
+			WP_CLI::log( ( $check['ok'] ? '  PASS  ' : '  FAIL  ' ) . $check['message'] );
+		}
+
+		if ( isset( $assoc_args['queue'] ) && 'error' !== $result['status'] ) {
+			KDNA_SeoWriter_Queue::add( 'attachment', $id, 'attachment', 'alt_text', KDNA_SeoWriter_Alt_Text::get_alt( $id ), $result['alt'], $result['checks'], false, $context );
+			WP_CLI::success( 'Added to the Review tab.' );
+		}
+	}
+
+	/**
+	 * Shows the keyphrase report for an item.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <id>
+	 * : Post ID, or term ID when --term is given.
+	 *
+	 * [--term=<taxonomy>]
+	 * : Report on a term in this taxonomy.
+	 *
+	 * @param array<int, string>    $args       Positional arguments.
+	 * @param array<string, string> $assoc_args Named arguments.
+	 * @return void
+	 */
+	public function report( array $args, array $assoc_args ): void {
+		$taxonomy = (string) ( $assoc_args['term'] ?? '' );
+		$report   = KDNA_SeoWriter_Report::build( '' !== $taxonomy ? 'term' : 'post', (int) $args[0], $taxonomy );
+
+		WP_CLI::log( 'Keyphrase: ' . $report['keyphrase'] );
+		if ( '' !== $report['message'] ) {
+			WP_CLI::log( $report['message'] );
+		}
+		foreach ( $report['checks'] as $check ) {
+			WP_CLI::log( sprintf( '  %-5s %s: %s', strtoupper( $check['status'] ), $check['label'], $check['message'] ) );
+			if ( '' !== $check['suggestion'] ) {
+				WP_CLI::log( '        ' . $check['suggestion_label'] . ': ' . $check['suggestion'] );
+			}
+		}
 	}
 
 	/**

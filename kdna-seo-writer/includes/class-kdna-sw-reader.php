@@ -529,11 +529,13 @@ final class KDNA_SeoWriter_Reader {
 	 *     h3: array<int, string>,
 	 *     text: string,
 	 *     word_count: int,
-	 *     trimmed: bool
+	 *     trimmed: bool,
+	 *     images: array<int, array{id: int, alt: string, src: string}>
 	 * }
 	 */
 	private static function result( array $item, string $html ): array {
-		$html = self::remove_hidden_parts( $html );
+		$html   = self::remove_hidden_parts( $html );
+		$images = self::images_in( $html );
 
 		$h1 = self::tag_texts( $html, 'h1' );
 		$h2 = self::tag_texts( $html, 'h2' );
@@ -563,6 +565,7 @@ final class KDNA_SeoWriter_Reader {
 				'text'            => $trimmed ? self::trim_text( $text, $max_chars ) : $text,
 				'word_count'      => $word_count,
 				'trimmed'         => $trimmed,
+				'images'          => $images,
 			)
 		);
 
@@ -574,6 +577,35 @@ final class KDNA_SeoWriter_Reader {
 		}
 
 		return $result;
+	}
+
+	/**
+	 * Lists the images in the rendered content, in page order.
+	 *
+	 * Media library images carry their ID in a wp-image-123 class (block and
+	 * classic editors, and Elementor's image widgets). Images without one, such
+	 * as images from other sites, are listed with ID 0.
+	 *
+	 * @param string $html Rendered HTML.
+	 * @return array<int, array{id: int, alt: string, src: string}>
+	 */
+	private static function images_in( string $html ): array {
+		if ( ! preg_match_all( '#<img\b[^>]*>#i', $html, $tags ) ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $tags[0] as $tag ) {
+			$id  = preg_match( '/wp-image-(\d+)/', $tag, $m ) ? (int) $m[1] : 0;
+			$alt = preg_match( '/\salt\s*=\s*(["\'])(.*?)\1/is', $tag, $m ) ? html_entity_decode( $m[2], ENT_QUOTES | ENT_HTML5, 'UTF-8' ) : '';
+			$src = preg_match( '/\s(?:data-src|src)\s*=\s*(["\'])(.*?)\1/is', $tag, $m ) ? $m[2] : '';
+			$out[] = array(
+				'id'  => $id,
+				'alt' => trim( $alt ),
+				'src' => $src,
+			);
+		}
+		return $out;
 	}
 
 	/**
@@ -605,6 +637,7 @@ final class KDNA_SeoWriter_Reader {
 			'text'            => '',
 			'word_count'      => 0,
 			'trimmed'         => false,
+			'images'          => array(),
 		);
 	}
 

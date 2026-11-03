@@ -68,6 +68,7 @@ final class KDNA_SeoWriter_Plugin {
 
 		// Background jobs, and the guard that stops open editors wiping their results.
 		KDNA_SeoWriter_Scheduler::hooks();
+		KDNA_SeoWriter_Alt_Text::hooks();
 		KDNA_SeoWriter_Guard::hooks();
 
 		if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( 'WP_CLI' ) ) {
@@ -197,5 +198,6 @@ final class KDNA_SeoWriter_Plugin {
 		( new KDNA_SeoWriter_Rest_Generate() )->register();
 		( new KDNA_SeoWriter_Rest_Queue() )->register();
 		( new KDNA_SeoWriter_Rest_Overview() )->register();
+		( new KDNA_SeoWriter_Rest_Report() )->register();
 	}
 }

@@ -30,6 +30,7 @@ defined( 'ABSPATH' ) || exit;
 					<option value="meta_description"><?php esc_html_e( 'Meta description', 'kdna-seo-writer' ); ?></option>
 					<option value="focus_keyphrase"><?php esc_html_e( 'Focus keyphrase', 'kdna-seo-writer' ); ?></option>
 					<option value="social"><?php esc_html_e( 'Social title and description', 'kdna-seo-writer' ); ?></option>
+					<option value="alt_text"><?php esc_html_e( 'Image alt text', 'kdna-seo-writer' ); ?></option>
 				</select>
 			</label>
 			<label>
@@ -72,6 +73,7 @@ defined( 'ABSPATH' ) || exit;
 					<span class="kdna-sw-pill" x-text="item.type_label"></span>
 					<span class="kdna-sw-pill is-wait" x-show="item.regenerating"><?php esc_html_e( 'Regenerating…', 'kdna-seo-writer' ); ?></span>
 				</h3>
+				<span class="kdna-sw-small" x-show="item.context" x-text="'<?php echo esc_js( __( 'Written for:', 'kdna-seo-writer' ) ); ?> ' + item.context"></span>
 				<a class="kdna-sw-view" :href="item.view_url" target="_blank" rel="noopener"><?php esc_html_e( 'View page', 'kdna-seo-writer' ); ?><span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'kdna-seo-writer' ); ?></span></a>
 			</header>
 
@@ -83,6 +85,7 @@ defined( 'ABSPATH' ) || exit;
 						<span class="kdna-sw-pill" x-show="row.locked"><?php esc_html_e( 'Locked', 'kdna-seo-writer' ); ?></span>
 					</div>
 					<div class="kdna-sw-row-body">
+						<img class="kdna-sw-thumb" x-show="item.thumbnail" :src="item.thumbnail" alt="" loading="lazy">
 						<p class="kdna-sw-current"><span class="kdna-sw-small"><?php esc_html_e( 'Now:', 'kdna-seo-writer' ); ?></span> <span x-text="row.current || '<?php echo esc_js( __( '(empty)', 'kdna-seo-writer' ) ); ?>'"></span></p>
 						<label class="kdna-sw-small" :for="'kdna-sw-edit-' + row.id"><?php esc_html_e( 'Suggested (you can edit it before approving):', 'kdna-seo-writer' ); ?></label>
 						<div class="kdna-sw-edit-wrap">

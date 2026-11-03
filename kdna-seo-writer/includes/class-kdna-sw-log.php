@@ -38,7 +38,7 @@ final class KDNA_SeoWriter_Log {
 			$tables['log'],
 			array(
 				'kind'           => 'change',
-				'object_type'    => 'term' === $object_type ? 'term' : 'post',
+				'object_type'    => in_array( $object_type, array( 'term', 'attachment' ), true ) ? $object_type : 'post',
 				'object_id'      => $id,
 				'object_subtype' => sanitize_key( $subtype ),
 				'field'          => sanitize_key( $field ),
@@ -123,6 +123,16 @@ final class KDNA_SeoWriter_Log {
 		$id      = (int) $row['object_id'];
 		$subtype = (string) $row['object_subtype'];
 		$field   = (string) $row['field'];
+
+		if ( 'attachment' === $type && 'alt_text' === $field ) {
+			if ( KDNA_SeoWriter_Alt_Text::get_alt( $id ) !== trim( (string) $row['new_value'] ) ) {
+				return new WP_Error( 'kdna_sw_log_changed', __( 'This alt text has been edited since that change, so the edit has been kept and nothing was undone.', 'kdna-seo-writer' ) );
+			}
+			KDNA_SeoWriter_Alt_Text::save( $id, (string) $row['old_value'], 'undo' );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Custom plugin table.
+			$wpdb->update( KDNA_SeoWriter_Install::tables()['log'], array( 'undone_at' => current_time( 'mysql', true ) ), array( 'id' => $log_id ), array( '%s' ), array( '%d' ) );
+			return true;
+		}
 
 		if ( ! isset( KDNA_SeoWriter_Yoast::FIELDS[ $field ] ) ) {
 			return new WP_Error( 'kdna_sw_log_field', __( 'That change is for a field the plugin no longer writes.', 'kdna-seo-writer' ) );

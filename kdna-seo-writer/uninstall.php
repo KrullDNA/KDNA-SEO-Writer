@@ -27,11 +27,12 @@ $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => 'kdna_sw_state' ) ); // php
 $wpdb->delete( $wpdb->termmeta, array( 'meta_key' => 'kdna_sw_state' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => 'kdna_sw_attempted' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 $wpdb->delete( $wpdb->termmeta, array( 'meta_key' => 'kdna_sw_attempted' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => 'kdna_sw_decorative' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 
 // Remove the plugin's waiting background jobs from Action Scheduler's table, if it exists.
 $kdna_sw_as_table = $wpdb->prefix . 'actionscheduler_actions';
 if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $kdna_sw_as_table ) ) === $kdna_sw_as_table ) {
-	$wpdb->query( $wpdb->prepare( "DELETE FROM {$kdna_sw_as_table} WHERE hook IN ( %s, %s ) AND status = 'pending'", 'kdna_sw_generate', 'kdna_sw_sweep' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$wpdb->query( $wpdb->prepare( "DELETE FROM {$kdna_sw_as_table} WHERE hook IN ( %s, %s, %s ) AND status = 'pending'", 'kdna_sw_generate', 'kdna_sw_sweep', 'kdna_sw_alt' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 }
 // phpcs:enable
 

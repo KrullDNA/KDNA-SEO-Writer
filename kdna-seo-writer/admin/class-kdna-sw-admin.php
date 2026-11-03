@@ -258,6 +258,13 @@ final class KDNA_SeoWriter_Admin {
 				'pixels'            => __( 'About %1$d pixels wide in Google (aim for %2$d to %3$d)', 'kdna-seo-writer' ),
 				/* translators: 1: input tokens, 2: output tokens, 3: cached tokens. */
 				'tokens'            => __( '%1$s tokens in, %2$s out, %3$s read from the cache', 'kdna-seo-writer' ),
+				'images'            => __( 'Images', 'kdna-seo-writer' ),
+				'copied'            => __( 'Copied', 'kdna-seo-writer' ),
+				'statuses'          => array(
+					'good' => __( 'Good', 'kdna-seo-writer' ),
+					'okay' => __( 'Could be better', 'kdna-seo-writer' ),
+					'bad'  => __( 'Needs work', 'kdna-seo-writer' ),
+				),
 				'flags'             => array(
 					'new'       => __( 'New', 'kdna-seo-writer' ),
 					'attention' => __( 'Replaces existing text', 'kdna-seo-writer' ),

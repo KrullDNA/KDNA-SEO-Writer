@@ -32,7 +32,7 @@ class WPDB_SQLite {
 		$this->pdo = new PDO( 'sqlite::memory:' );
 		$this->pdo->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );
 		$this->pdo->sqliteCreateFunction( 'CHAR_LENGTH', fn( $s ) => mb_strlen( (string) $s ), 1 );
-		$this->pdo->exec( "CREATE TABLE wp_kdna_sw_queue ( id INTEGER PRIMARY KEY AUTOINCREMENT, object_type TEXT, object_id INTEGER, object_subtype TEXT, field TEXT, current_value TEXT, suggested_value TEXT, checks TEXT, status TEXT DEFAULT 'pending', flag TEXT DEFAULT 'new', fingerprint TEXT, created_by INTEGER, created_at TEXT, updated_at TEXT )" );
+		$this->pdo->exec( "CREATE TABLE wp_kdna_sw_queue ( id INTEGER PRIMARY KEY AUTOINCREMENT, object_type TEXT, object_id INTEGER, object_subtype TEXT, context_id INTEGER DEFAULT 0, field TEXT, current_value TEXT, suggested_value TEXT, checks TEXT, status TEXT DEFAULT 'pending', flag TEXT DEFAULT 'new', fingerprint TEXT, created_by INTEGER, created_at TEXT, updated_at TEXT )" );
 		$this->pdo->exec( "CREATE TABLE wp_kdna_sw_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT DEFAULT 'change', object_type TEXT DEFAULT '', object_id INTEGER DEFAULT 0, object_subtype TEXT DEFAULT '', field TEXT DEFAULT '', old_value TEXT, new_value TEXT, source TEXT DEFAULT '', model TEXT DEFAULT '', input_tokens INTEGER DEFAULT 0, output_tokens INTEGER DEFAULT 0, cache_read_tokens INTEGER DEFAULT 0, cache_write_tokens INTEGER DEFAULT 0, user_id INTEGER DEFAULT 0, created_at TEXT, undone_at TEXT )" );
 	}
 	function prepare( $q, ...$args ) {
@@ -65,7 +65,7 @@ class WPDB_SQLite {
 }
 $GLOBALS['wpdb'] = new WPDB_SQLite();
 
-foreach ( [ 'plugin', 'settings', 'crypto', 'claude', 'reader', 'install', 'yoast', 'rules', 'keyphrases', 'state', 'log', 'cache', 'writer', 'usage', 'queue', 'scheduler', 'guard' ] as $f ) require $P . "includes/class-kdna-sw-$f.php";
+foreach ( [ 'plugin', 'settings', 'crypto', 'claude', 'reader', 'install', 'yoast', 'rules', 'keyphrases', 'state', 'log', 'cache', 'writer', 'usage', 'queue', 'scheduler', 'guard', 'alt-text' ] as $f ) require $P . "includes/class-kdna-sw-$f.php";
 
 $fail = 0;
 function check( $name, $cond ) { global $fail; echo ( $cond ? 'PASS ' : 'FAIL ' ) . $name . "\n"; if ( ! $cond ) $fail++; }

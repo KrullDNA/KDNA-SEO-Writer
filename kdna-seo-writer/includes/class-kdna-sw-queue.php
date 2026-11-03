@@ -38,6 +38,7 @@ final class KDNA_SeoWriter_Queue {
 		'og_description'   => 'og_description',
 		'x_title'          => 'og_title',
 		'x_description'    => 'og_description',
+		'alt_text'         => 'alt_text',
 	);
 
 	/**
@@ -122,9 +123,10 @@ final class KDNA_SeoWriter_Queue {
 	 * @param string                           $suggested   Suggested value.
 	 * @param array<int, array<string, mixed>> $checks      All checks from the writer.
 	 * @param bool                             $locked      Whether the field is locked.
+	 * @param int                              $context_id  For images, the page the alt text was written for.
 	 * @return bool True when the suggestion was added.
 	 */
-	public static function add( string $object_type, int $id, string $subtype, string $field, string $current, string $suggested, array $checks, bool $locked = false ): bool {
+	public static function add( string $object_type, int $id, string $subtype, string $field, string $current, string $suggested, array $checks, bool $locked = false, int $context_id = 0 ): bool {
 		global $wpdb;
 
 		$tables      = KDNA_SeoWriter_Install::tables();
@@ -166,6 +168,7 @@ final class KDNA_SeoWriter_Queue {
 				'object_type'     => $object_type,
 				'object_id'       => $id,
 				'object_subtype'  => sanitize_key( $subtype ),
+				'context_id'      => $context_id,
 				'field'           => $field,
 				'current_value'   => $current,
 				'suggested_value' => $suggested,
@@ -177,7 +180,7 @@ final class KDNA_SeoWriter_Queue {
 				'created_at'      => $now,
 				'updated_at'      => $now,
 			),
-			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
+			array( '%s', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
 		);
 		// phpcs:enable
 
@@ -252,6 +255,10 @@ final class KDNA_SeoWriter_Queue {
 			return null;
 		}
 
+		if ( 'attachment' === $object_type ) {
+			return self::image_item( $id, $rows );
+		}
+
 		$subtype = (string) $rows[0]['object_subtype'];
 		$current = KDNA_SeoWriter_Yoast::get_all( $object_type, $id, $subtype );
 		$state   = KDNA_SeoWriter_State::get( $object_type, $id );
@@ -301,6 +308,49 @@ final class KDNA_SeoWriter_Queue {
 	}
 
 	/**
+	 * Builds one image item for the review screen, with its thumbnail.
+	 *
+	 * @param int                              $id   Attachment ID.
+	 * @param array<int, array<string, mixed>> $rows The image's waiting rows.
+	 * @return array<string, mixed>
+	 */
+	private static function image_item( int $id, array $rows ): array {
+		$context = (int) $rows[0]['context_id'];
+		$title   = get_the_title( $id );
+		$fields  = array();
+
+		foreach ( $rows as $row ) {
+			$fields[] = array(
+				'id'        => (int) $row['id'],
+				'field'     => 'alt_text',
+				'label'     => KDNA_SeoWriter_Rules::field_label( 'alt_text' ),
+				'current'   => KDNA_SeoWriter_Alt_Text::get_alt( $id ),
+				'suggested' => (string) $row['suggested_value'],
+				'flag'      => (string) $row['flag'],
+				'locked'    => false,
+				'checks'    => json_decode( (string) $row['checks'], true ) ?: array(),
+			);
+		}
+
+		return array(
+			'key'          => 'attachment:' . $id,
+			'object_type'  => 'attachment',
+			'id'           => $id,
+			'subtype'      => 'attachment',
+			'type_label'   => __( 'Image', 'kdna-seo-writer' ),
+			'title'        => '' !== $title ? $title : wp_basename( (string) get_attached_file( $id ) ),
+			'edit_url'     => (string) get_edit_post_link( $id, 'url' ),
+			'view_url'     => $context ? (string) get_permalink( $context ) : (string) wp_get_attachment_url( $id ),
+			'context'      => $context ? get_the_title( $context ) : '',
+			'thumbnail'    => (string) wp_get_attachment_image_url( $id, 'medium' ),
+			'title_suffix' => '',
+			'keyphrase'    => '',
+			'regenerating' => KDNA_SeoWriter_State::job_waiting( 'post', $id ),
+			'fields'       => $fields,
+		);
+	}
+
+	/**
 	 * Approves suggestions, optionally with edited text, and saves them into Yoast.
 	 *
 	 * Text edited by a person before approval is theirs, so those fields are
@@ -328,6 +378,18 @@ final class KDNA_SeoWriter_Queue {
 
 			if ( ! self::can_edit( $type, $id ) ) {
 				$out['errors'][] = __( 'You are not allowed to edit one of the items, so it was skipped.', 'kdna-seo-writer' );
+				continue;
+			}
+
+			// Image alt text is saved into the media library, not Yoast.
+			if ( 'attachment' === $type ) {
+				foreach ( $rows as $row ) {
+					$edit   = isset( $edits[ (int) $row['id'] ] ) ? trim( sanitize_text_field( (string) $edits[ (int) $row['id'] ] ) ) : '';
+					$edited = '' !== $edit && $edit !== (string) $row['suggested_value'];
+					KDNA_SeoWriter_Alt_Text::save( $id, $edited ? $edit : (string) $row['suggested_value'], $edited ? 'edited' : 'approved', (int) $row['context_id'] );
+				}
+				self::delete_rows( array_map( static fn( $row ) => (int) $row['id'], $rows ) );
+				$out['approved'] += count( $rows );
 				continue;
 			}
 
@@ -451,7 +513,11 @@ final class KDNA_SeoWriter_Queue {
 				continue;
 			}
 			self::delete_rows( array_map( static fn( $row ) => (int) $row['id'], $rows ) );
-			KDNA_SeoWriter_Scheduler::queue( $item['type'], $item['id'], (string) $rows[0]['object_subtype'], 'regenerate' );
+			if ( 'attachment' === $item['type'] ) {
+				KDNA_SeoWriter_Alt_Text::queue( $item['id'], (int) $rows[0]['context_id'], 'regenerate' );
+			} else {
+				KDNA_SeoWriter_Scheduler::queue( $item['type'], $item['id'], (string) $rows[0]['object_subtype'], 'regenerate' );
+			}
 			++$count;
 		}
 		self::flush_count();
@@ -638,7 +704,7 @@ final class KDNA_SeoWriter_Queue {
 	 * @return array{type: string, id: int}|null
 	 */
 	public static function parse_key( string $key ): ?array {
-		if ( ! preg_match( '/^(post|term):(\d+)$/', $key, $match ) ) {
+		if ( ! preg_match( '/^(post|term|attachment):(\d+)$/', $key, $match ) ) {
 			return null;
 		}
 		return array(

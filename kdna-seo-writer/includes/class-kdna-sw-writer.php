@@ -137,6 +137,13 @@ final class KDNA_SeoWriter_Writer {
 			'headings'     => array_values( array_filter( array_map( 'trim', array_map( 'strval', (array) ( $answer['headings'] ?? array() ) ) ) ) ),
 		);
 		$result['checks']         = $check['checks'];
+
+		// Kept for the keyphrase report, with the keyphrase they were written for.
+		KDNA_SeoWriter_State::set_suggestions(
+			$object_type,
+			$id,
+			array_merge( $result['suggestions'], array( 'keyphrase' => $built['values']['focus_keyphrase'] ) )
+		);
 		$result['status']         = $check['passed'] ? 'ready' : 'needs_review';
 		$result['message']        = $check['passed']
 			? __( 'All checks passed.', 'kdna-seo-writer' )

@@ -157,6 +157,7 @@ final class KDNA_SeoWriter_Editor {
 		}
 
 		$html .= '<p class="description">' . esc_html( self::mode_note( $status['mode'] ) ) . '</p>';
+		$html .= '<div class="kdna-sw-report"><h4>' . esc_html__( 'Keyphrase report', 'kdna-seo-writer' ) . '</h4><div class="kdna-sw-report-body" aria-live="polite"><p class="description">' . esc_html__( 'Loading…', 'kdna-seo-writer' ) . '</p></div></div>';
 		$html .= '</div>';
 
 		return $html;
@@ -280,6 +281,16 @@ final class KDNA_SeoWriter_Editor {
 					'error'      => __( 'Something went wrong. Please try again.', 'kdna-seo-writer' ),
 					'saveFirst'  => __( 'Save the page first, so Claude can read its content.', 'kdna-seo-writer' ),
 					'reloadNote' => __( 'Reload the page to see the new text in Yoast\'s box. Saving first is safe: the new values are kept.', 'kdna-seo-writer' ),
+					'report'     => __( 'Keyphrase report', 'kdna-seo-writer' ),
+					'copy'       => __( 'Copy', 'kdna-seo-writer' ),
+					'copied'     => __( 'Copied', 'kdna-seo-writer' ),
+					'applySlug'  => __( 'Apply this slug', 'kdna-seo-writer' ),
+					'statuses'   => array(
+						'good' => __( 'Good', 'kdna-seo-writer' ),
+						'okay' => __( 'Could be better', 'kdna-seo-writer' ),
+						'bad'  => __( 'Needs work', 'kdna-seo-writer' ),
+					),
+					'noSuggest'  => __( 'Click Generate now to get suggested wording for anything that needs work.', 'kdna-seo-writer' ),
 					'modes'      => array(
 						'auto'   => self::mode_note( 'auto' ),
 						'review' => self::mode_note( 'review' ),

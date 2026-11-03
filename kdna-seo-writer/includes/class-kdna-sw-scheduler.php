@@ -185,6 +185,12 @@ final class KDNA_SeoWriter_Scheduler {
 			return;
 		}
 
+		// Images on the item that have no alt text get their own jobs, so a
+		// slow image never holds up the page's metadata.
+		if ( 'post' === $object_type ) {
+			KDNA_SeoWriter_Alt_Text::queue_for_post( $id, $mode );
+		}
+
 		if ( 'auto' === $mode && ! self::needs_work( $object_type, $id, $subtype ) ) {
 			KDNA_SeoWriter_State::attempted( $object_type, $id );
 			KDNA_SeoWriter_State::set_last( $object_type, $id, 'nothing', __( 'Every field is already filled or locked, so nothing was needed.', 'kdna-seo-writer' ) );
@@ -231,6 +237,13 @@ final class KDNA_SeoWriter_Scheduler {
 
 		foreach ( $items as $index => $item ) {
 			self::queue( $item['type'], $item['id'], $item['subtype'], 'auto', $index * self::SWEEP_SPACING );
+		}
+
+		// Any nightly places left go to library images with no alt text,
+		// featured images first.
+		$offset = count( $items );
+		foreach ( KDNA_SeoWriter_Alt_Text::sweep_candidates( $limit - $offset ) as $index => $image ) {
+			KDNA_SeoWriter_Alt_Text::queue( $image['id'], $image['context'], 'auto', ( $offset + $index ) * self::SWEEP_SPACING );
 		}
 	}
 

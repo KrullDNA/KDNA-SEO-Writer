@@ -91,6 +91,10 @@ final class KDNA_SeoWriter_Lists {
 			add_filter( "{$taxonomy}_row_actions", array( $this, 'term_row_action' ), 10, 2 );
 			add_filter( "bulk_actions-edit-{$taxonomy}", array( $this, 'add_bulk_action' ) );
 			add_filter( "handle_bulk_actions-edit-{$taxonomy}", array( $this, 'handle_term_bulk' ), 10, 3 );
+		} elseif ( 'upload' === $screen->base && KDNA_SeoWriter_Alt_Text::enabled() ) {
+			add_filter( 'media_row_actions', array( $this, 'media_row_action' ), 10, 2 );
+			add_action( 'admin_notices', array( $this, 'queued_notice' ) );
+			return;
 		} else {
 			return;
 		}
@@ -228,6 +232,20 @@ final class KDNA_SeoWriter_Lists {
 	}
 
 	/**
+	 * Adds "Write alt text" to images in the media library's list view.
+	 *
+	 * @param array<string, string> $actions Row actions.
+	 * @param WP_Post               $post    The attachment.
+	 * @return array<string, string>
+	 */
+	public function media_row_action( array $actions, $post ): array {
+		if ( $post instanceof WP_Post && wp_attachment_is_image( $post->ID ) && current_user_can( 'edit_post', $post->ID ) && ! KDNA_SeoWriter_Alt_Text::is_decorative( (int) $post->ID ) ) {
+			$actions['kdna_sw'] = '<a href="' . esc_url( self::row_url( 'attachment', (int) $post->ID, 'attachment' ) ) . '">' . esc_html__( 'Write alt text', 'kdna-seo-writer' ) . '</a>';
+		}
+		return $actions;
+	}
+
+	/**
 	 * Adds the bulk action.
 	 *
 	 * @param array<string, string> $actions Bulk actions.
@@ -290,7 +308,7 @@ final class KDNA_SeoWriter_Lists {
 	 */
 	public function handle_row_action(): void {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Nonce checked just below.
-		$type    = isset( $_GET['type'] ) && 'term' === $_GET['type'] ? 'term' : 'post';
+		$type    = isset( $_GET['type'] ) && in_array( $_GET['type'], array( 'term', 'attachment' ), true ) ? sanitize_key( $_GET['type'] ) : 'post';
 		$id      = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
 		$subtype = isset( $_GET['subtype'] ) ? sanitize_key( wp_unslash( $_GET['subtype'] ) ) : '';
 		// phpcs:enable
@@ -302,8 +320,13 @@ final class KDNA_SeoWriter_Lists {
 			wp_die( esc_html__( 'Sorry, you are not allowed to do that.', 'kdna-seo-writer' ), 403 );
 		}
 
-		$problem = KDNA_SeoWriter_Rest_Generate::cannot_generate( $type, $subtype );
-		$queued  = '' === $problem && KDNA_SeoWriter_Scheduler::queue( $type, $id, $subtype, 'manual' );
+		if ( 'attachment' === $type ) {
+			// Alt text suggestions always wait in the Review tab.
+			$queued = KDNA_SeoWriter_Alt_Text::enabled() && KDNA_SeoWriter_Alt_Text::queue( $id, (int) wp_get_post_parent_id( $id ), 'manual' );
+		} else {
+			$problem = KDNA_SeoWriter_Rest_Generate::cannot_generate( $type, $subtype );
+			$queued  = '' === $problem && KDNA_SeoWriter_Scheduler::queue( $type, $id, $subtype, 'manual' );
+		}
 
 		$back = wp_get_referer();
 		$back = $back ? $back : admin_url();

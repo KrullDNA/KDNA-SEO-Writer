@@ -34,7 +34,7 @@ defined( 'ABSPATH' ) || exit;
 		<h2><?php esc_html_e( 'Other', 'kdna-seo-writer' ); ?></h2>
 
 		<label class="kdna-sw-check"><input type="checkbox" x-model="settings.automation.alt_text"> <?php esc_html_e( 'Write image alt text', 'kdna-seo-writer' ); ?></label>
-		<p class="description"><?php esc_html_e( 'Suggests alt text for images that have none. Every suggestion waits in the Review tab. (This part of the plugin arrives in the next build stage.)', 'kdna-seo-writer' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Suggests alt text for images that have none, written from the image itself and the page it is on. Every suggestion waits in the Review tab. Images on items being processed go first, then featured images and the rest of the media library in the nightly sweep. Mark an image Decorative in the media library to keep its alt text empty on purpose.', 'kdna-seo-writer' ); ?></p>
 
 		<label class="kdna-sw-check"><input type="checkbox" x-model="settings.automation.rocket_purge"> <?php esc_html_e( 'Clear the WP Rocket cache after each change', 'kdna-seo-writer' ); ?></label>
 		<p class="description"><?php esc_html_e( 'Clears only the one page that changed, never the whole site, so visitors and Google see the new tags straight away.', 'kdna-seo-writer' ); ?></p>

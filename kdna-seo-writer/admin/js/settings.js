@@ -95,7 +95,7 @@
 				testing: false,
 				notice: { text: '', ok: true },
 				test: { message: '', ok: true },
-				contentTypes: ( data.postTypes || [] ).concat( data.taxonomies || [] ),
+				contentTypes: ( data.postTypes || [] ).concat( data.taxonomies || [], [ { name: 'attachment', label: i18n.images } ] ),
 				review: {
 					items: [],
 					total: 0,
@@ -109,6 +109,7 @@
 					polls: 0,
 				},
 				overview: { data: null, loading: false, message: '' },
+				keyphrases: { items: [], loading: false, loaded: false, search: '', duplicatesOnly: false, open: '', reports: {} },
 
 				/**
 				 * Keeps the open tab in step with the address when the screen starts,
@@ -133,6 +134,8 @@
 						this.loadReview( this.review.page );
 					} else if ( 'overview' === tab ) {
 						this.loadOverview();
+					} else if ( 'keyphrases' === tab && ! this.keyphrases.loaded ) {
+						this.loadKeyphrases();
 					}
 				},
 
@@ -386,6 +389,16 @@
 						};
 					}
 
+					if ( 'alt_text' === row.field ) {
+						var altMax = adv.alt_max || 125;
+						var altChars = Array.from( text ).length;
+						return {
+							percent: Math.min( 100, Math.round( ( altChars / altMax ) * 100 ) ),
+							ok: altChars >= 1 && altChars <= altMax,
+							text: i18n.chars.replace( '%1$d', altChars ).replace( '%2$d', 1 ).replace( '%3$d', altMax ),
+						};
+					}
+
 					if ( 'seo_title' === row.field ) {
 						var full = text + ( item.title_suffix ? ' ' + item.title_suffix : '' );
 						var width = measure( full );
@@ -528,6 +541,116 @@
 						return '';
 					}
 					return i18n.tokens.replace( '%1$s', usage.input.toLocaleString() ).replace( '%2$s', usage.output.toLocaleString() ).replace( '%3$s', usage.cached.toLocaleString() );
+				},
+
+				/* ---------------- Keyphrases tab ---------------- */
+
+				/**
+				 * Loads the keyphrase register.
+				 *
+				 * @return {Promise} Done.
+				 */
+				loadKeyphrases: function () {
+					this.keyphrases.loading = true;
+					return window.wp.apiFetch( { path: data.restPath + '/keyphrases' } )
+						.then( ( response ) => {
+							this.keyphrases.items = response.items || [];
+							this.keyphrases.loaded = true;
+						} )
+						.catch( ( error ) => {
+							this.notice = { text: ( error && error.message ) || i18n.genericError, ok: false };
+						} )
+						.finally( () => {
+							this.keyphrases.loading = false;
+						} );
+				},
+
+				/**
+				 * Returns the keyphrases matching the search and duplicates filter.
+				 *
+				 * @return {Array<Object>} Rows.
+				 */
+				filteredKeyphrases: function () {
+					var search = ( this.keyphrases.search || '' ).toLowerCase().trim();
+					var dupes = this.keyphrases.duplicatesOnly;
+					return this.keyphrases.items.filter( function ( row ) {
+						if ( dupes && ! row.duplicate ) {
+							return false;
+						}
+						return ! search || row.keyphrase.toLowerCase().indexOf( search ) !== -1 || row.title.toLowerCase().indexOf( search ) !== -1;
+					} );
+				},
+
+				/**
+				 * Opens or closes an item's keyphrase report.
+				 *
+				 * @param {Object} row Keyphrase row.
+				 */
+				toggleReport: function ( row ) {
+					if ( this.keyphrases.open === row.key ) {
+						this.keyphrases.open = '';
+						return;
+					}
+					this.keyphrases.open = row.key;
+					this.loadReport( row );
+				},
+
+				/**
+				 * Loads one item's keyphrase report.
+				 *
+				 * @param {Object} row Keyphrase row.
+				 * @return {Promise} Done.
+				 */
+				loadReport: function ( row ) {
+					var path = data.restPath + '/report/' + row.id + '?type=' + row.type + ( row.taxonomy ? '&taxonomy=' + encodeURIComponent( row.taxonomy ) : '' );
+					return window.wp.apiFetch( { path: path } ).then( ( report ) => {
+						this.keyphrases.reports = Object.assign( {}, this.keyphrases.reports, { [ row.key ]: report } );
+					} );
+				},
+
+				/**
+				 * Applies the suggested slug to a never-published item.
+				 *
+				 * @param {Object} row Keyphrase row.
+				 */
+				applySlug: function ( row ) {
+					this.busy = true;
+					window.wp.apiFetch( { path: data.restPath + '/report/' + row.id, method: 'POST', data: { type: row.type } } )
+						.then( ( report ) => {
+							this.keyphrases.reports = Object.assign( {}, this.keyphrases.reports, { [ row.key ]: report } );
+							this.notice = { text: report.message || '', ok: true };
+						} )
+						.catch( ( error ) => {
+							this.notice = { text: ( error && error.message ) || i18n.genericError, ok: false };
+						} )
+						.finally( () => {
+							this.busy = false;
+						} );
+				},
+
+				/**
+				 * Copies suggested wording to the clipboard.
+				 *
+				 * @param {string} text  Text.
+				 * @param {Event}  event Click event.
+				 */
+				copy: function ( text, event ) {
+					var button = event && event.currentTarget;
+					if ( window.navigator.clipboard && window.navigator.clipboard.writeText ) {
+						window.navigator.clipboard.writeText( text ).then( function () {
+							if ( button ) {
+								var label = button.textContent;
+								button.textContent = i18n.copied;
+								window.setTimeout( function () {
+									button.textContent = label;
+								}, 1500 );
+							}
+						} );
+					}
+				},
+
+				statusLabel: function ( status ) {
+					return ( i18n.statuses || {} )[ status ] || status;
 				},
 
 				/* ---------------- Advanced tab ---------------- */

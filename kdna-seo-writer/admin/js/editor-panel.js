@@ -82,6 +82,37 @@
 		}, 500 );
 	}
 
+	/**
+	 * Builds the keyphrase report route for an item.
+	 *
+	 * @param {Object} item type, id and taxonomy.
+	 * @return {string} Path.
+	 */
+	function reportPath( item ) {
+		return statusPath( item ).replace( '/generate/', '/report/' );
+	}
+
+	/**
+	 * Copies text to the clipboard.
+	 *
+	 * @param {string}  text   Text.
+	 * @param {Element} [button] Button to show "Copied" on.
+	 */
+	function copyText( text, button ) {
+		var done = function () {
+			if ( button ) {
+				var label = button.textContent;
+				button.textContent = i18n.copied;
+				window.setTimeout( function () {
+					button.textContent = label;
+				}, 1500 );
+			}
+		};
+		if ( window.navigator.clipboard && window.navigator.clipboard.writeText ) {
+			window.navigator.clipboard.writeText( text ).then( done );
+		}
+	}
+
 	/* ------------------------------------------------------------------ */
 	/* Classic editor, term screen and Elementor: the server-printed box. */
 	/* ------------------------------------------------------------------ */
@@ -138,6 +169,91 @@
 	}
 
 	/**
+	 * Draws the keyphrase report inside a box.
+	 *
+	 * @param {Element} box    The box.
+	 * @param {Object}  report Report from the server.
+	 */
+	function renderReport( box, report ) {
+		var body = box.querySelector( '.kdna-sw-report-body' );
+		if ( ! body ) {
+			return;
+		}
+		body.textContent = '';
+		body.setAttribute( 'data-loaded', '1' );
+
+		var add = function ( parent, tag, className, text ) {
+			var node = document.createElement( tag );
+			if ( className ) {
+				node.className = className;
+			}
+			if ( text ) {
+				node.textContent = text;
+			}
+			parent.appendChild( node );
+			return node;
+		};
+
+		if ( report.message ) {
+			add( body, 'p', 'kdna-sw-report-msg', report.message );
+		}
+
+		var list = add( body, 'ul', 'kdna-sw-report-list' );
+		var needsWork = false;
+		( report.checks || [] ).forEach( function ( check ) {
+			var li = add( list, 'li', 'kdna-sw-report-check is-' + check.status );
+			var head = add( li, 'div', 'kdna-sw-report-head' );
+			add( head, 'strong', '', check.label );
+			add( head, 'span', 'kdna-sw-report-status', ( i18n.statuses || {} )[ check.status ] || check.status );
+			add( li, 'p', '', check.message );
+			if ( ! check.ok ) {
+				needsWork = true;
+			}
+			if ( check.suggestion ) {
+				var tip = add( li, 'div', 'kdna-sw-suggestion' );
+				add( tip, 'span', 'kdna-sw-suggestion-label', check.suggestion_label + ':' );
+				add( tip, 'code', '', check.suggestion );
+				var copy = add( tip, 'button', 'button-link', i18n.copy );
+				copy.type = 'button';
+				copy.setAttribute( 'data-kdna-sw-copy', check.suggestion );
+			}
+			if ( check.can_apply ) {
+				var apply = add( li, 'button', 'button', i18n.applySlug );
+				apply.type = 'button';
+				apply.setAttribute( 'data-kdna-sw-apply-slug', '1' );
+			}
+			if ( check.warning ) {
+				add( li, 'p', 'kdna-sw-warning', check.warning );
+			}
+		} );
+
+		if ( needsWork && ! report.has_suggestions && report.keyphrase ) {
+			add( body, 'p', 'description', i18n.noSuggest );
+		}
+		if ( report.content_note && report.keyphrase ) {
+			add( body, 'p', 'description', report.content_note );
+		}
+	}
+
+	/**
+	 * Loads and draws a box's keyphrase report.
+	 *
+	 * @param {Element} box The box.
+	 */
+	function loadReport( box ) {
+		var body = box.querySelector( '.kdna-sw-report-body' );
+		if ( ! body ) {
+			return;
+		}
+		body.setAttribute( 'data-loaded', '1' );
+		api( reportPath( boxItem( box ) ) ).then( function ( report ) {
+			renderReport( box, report );
+		} ).catch( function () {
+			body.textContent = i18n.error;
+		} );
+	}
+
+	/**
 	 * Reads the item a box belongs to.
 	 *
 	 * @param {Element} box The box.
@@ -173,6 +289,7 @@
 						done += ' ' + i18n.reloadNote;
 					}
 					renderBox( box, data, done );
+					loadReport( box );
 				}
 			} ).catch( function () {
 				pollBox( box, count + 1 );
@@ -189,13 +306,31 @@
 
 		var generate = target.closest( '[data-kdna-sw-generate]' );
 		var unlock = target.closest( '[data-kdna-sw-unlock]' );
+		var copy = target.closest( '[data-kdna-sw-copy]' );
+		var slug = target.closest( '[data-kdna-sw-apply-slug]' );
 		var box = target.closest( '.kdna-sw-box' );
-		if ( ! box || ( ! generate && ! unlock ) ) {
+		if ( ! box || ( ! generate && ! unlock && ! copy && ! slug ) ) {
 			return;
 		}
 
 		event.preventDefault();
 		var item = boxItem( box );
+
+		if ( copy ) {
+			copyText( copy.getAttribute( 'data-kdna-sw-copy' ), copy );
+			return;
+		}
+
+		if ( slug ) {
+			slug.disabled = true;
+			api( '/report/' + item.id, { method: 'POST', data: { type: item.type, taxonomy: item.taxonomy || '' } } ).then( function ( report ) {
+				renderReport( box, report );
+			} ).catch( function ( error ) {
+				slug.disabled = false;
+				setMessage( box, ( error && error.message ) || i18n.error );
+			} );
+			return;
+		}
 
 		if ( generate ) {
 			generate.disabled = true;
@@ -238,6 +373,14 @@
 	if ( 'elementor' === cfg.mode ) {
 		addGuardField( '#yoast-form' );
 
+		// Elementor draws Page Settings when it is opened, so look for the box
+		// every two seconds and load its report the first time it appears.
+		window.setInterval( function () {
+			document.querySelectorAll( '.kdna-sw-box .kdna-sw-report-body:not([data-loaded])' ).forEach( function ( body ) {
+				loadReport( body.closest( '.kdna-sw-box' ) );
+			} );
+		}, 2000 );
+
 		// Boxes already queued when the editor opened keep checking back.
 		window.setTimeout( function () {
 			document.querySelectorAll( '.kdna-sw-box' ).forEach( function ( box ) {
@@ -258,6 +401,7 @@
 						pollBox( box );
 					}
 				} );
+				loadReport( box );
 			} );
 		} );
 	}
@@ -310,7 +454,14 @@
 		var busy = busyState[ 0 ];
 		var setBusy = busyState[ 1 ];
 		var polls = useRef( 0 );
+		var reportState = useState( null );
+		var report = reportState[ 0 ];
+		var setReport = reportState[ 1 ];
 		var item = { type: 'post', id: post.id, taxonomy: '' };
+
+		function loadReportData() {
+			return api( reportPath( item ) ).then( setReport ).catch( function () {} );
+		}
 
 		function load( afterJob ) {
 			return api( statusPath( item ) ).then( function ( next ) {
@@ -326,6 +477,7 @@
 						done += ' ' + i18n.reloadNote;
 					}
 					setMessage( done );
+					loadReportData();
 				}
 				return next;
 			} );
@@ -334,6 +486,7 @@
 		useEffect( function () {
 			if ( post.id ) {
 				load( false );
+				loadReportData();
 			}
 		}, [ post.id ] );
 
@@ -358,6 +511,14 @@
 			act( item, 'unlock', group ).then( function ( next ) {
 				setData( next );
 				setMessage( next.message || '' );
+			} ).catch( function ( error ) {
+				setMessage( ( error && error.message ) || i18n.error );
+			} );
+		}
+
+		function applySlug() {
+			api( '/report/' + item.id, { method: 'POST', data: { type: 'post' } } ).then( function ( next ) {
+				setReport( next );
 			} ).catch( function ( error ) {
 				setMessage( ( error && error.message ) || i18n.error );
 			} );
@@ -397,6 +558,41 @@
 				}
 			}
 			children.push( el( 'p', { className: 'description', key: 'mode' }, ( i18n.modes || {} )[ data.mode ] || '' ) );
+		}
+
+		if ( report ) {
+			children.push( el( 'h4', { key: 'report-title', className: 'kdna-sw-report-title' }, i18n.report ) );
+			if ( report.message ) {
+				children.push( el( 'p', { key: 'report-msg', className: 'kdna-sw-report-msg' }, report.message ) );
+			}
+			var needsWork = false;
+			children.push( el( 'ul', { key: 'report', className: 'kdna-sw-report-list' }, ( report.checks || [] ).map( function ( check ) {
+				if ( ! check.ok ) {
+					needsWork = true;
+				}
+				return el( 'li', { key: check.id, className: 'kdna-sw-report-check is-' + check.status },
+					el( 'div', { className: 'kdna-sw-report-head' },
+						el( 'strong', null, check.label ),
+						el( 'span', { className: 'kdna-sw-report-status' }, ( i18n.statuses || {} )[ check.status ] || check.status )
+					),
+					el( 'p', null, check.message ),
+					check.suggestion ? el( 'div', { className: 'kdna-sw-suggestion' },
+						el( 'span', { className: 'kdna-sw-suggestion-label' }, check.suggestion_label + ':' ),
+						el( 'code', null, check.suggestion ),
+						el( Button, { variant: 'link', onClick: function ( event ) {
+							copyText( check.suggestion, event.currentTarget );
+						} }, i18n.copy )
+					) : null,
+					check.can_apply ? el( Button, { variant: 'secondary', onClick: applySlug }, i18n.applySlug ) : null,
+					check.warning ? el( 'p', { className: 'kdna-sw-warning' }, check.warning ) : null
+				);
+			} ) ) );
+			if ( needsWork && ! report.has_suggestions && report.keyphrase ) {
+				children.push( el( 'p', { key: 'nosuggest', className: 'description' }, i18n.noSuggest ) );
+			}
+			if ( report.content_note && report.keyphrase ) {
+				children.push( el( 'p', { key: 'note', className: 'description' }, report.content_note ) );
+			}
 		}
 
 		return el( Panel, { name: 'kdna-seo-writer', title: i18n.title, className: 'kdna-sw-panel' }, el( 'div', { className: 'kdna-sw-box-block' }, children ) );

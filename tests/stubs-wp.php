@@ -6,7 +6,7 @@ $GLOBALS['meta'] = []; $GLOBALS['tmeta'] = []; $GLOBALS['posts'] = []; $GLOBALS[
 class WP_Post { public $ID; public $post_type='page'; public $post_content=''; public $post_password=''; public $post_title=''; public $post_status='publish'; }
 class WP_Term { public $term_id; public $taxonomy; public $name; public $description=''; }
 function get_post($id){ return $GLOBALS['posts'][$id] ?? null; }
-function get_post_type($id){ return $GLOBALS['posts'][$id]->post_type ?? ''; }
+function get_post_type($id){ return $GLOBALS['posts'][$id]->post_type ?? ( isset( $GLOBALS['attachments'][$id] ) ? 'attachment' : '' ); }
 function get_the_title($p){ $p = is_object($p)?$p:get_post($p); return $p ? $p->post_title : ''; }
 function get_permalink($p){ $p = is_object($p)?$p:get_post($p); return 'https://example.com/'.($p?$p->ID:0).'/'; }
 function has_blocks($c){ return str_contains((string)$c,'<!-- wp:'); }
@@ -51,3 +51,17 @@ class WPDB2 extends WPDB_Stub { public $postmeta='wp_postmeta'; public $posts='w
   function update($t,$d,$w,$f=null,$wf=null){ foreach ($d as $k=>$v) $this->rows[$w['id']][$k]=$v; return 1; } }
 $GLOBALS['wpdb'] = new WPDB2();
 
+// Media stand-ins (Stage 4).
+$GLOBALS['thumbs'] = []; $GLOBALS['attachments'] = [];
+function get_post_thumbnail_id( $id ) { return $GLOBALS['thumbs'][ $id ] ?? 0; }
+function get_post_mime_type( $id ) { return $GLOBALS['attachments'][ $id ]['mime'] ?? ''; }
+function get_attached_file( $id ) { return $GLOBALS['attachments'][ $id ]['file'] ?? ''; }
+function wp_get_post_parent_id( $id ) { return $GLOBALS['attachments'][ $id ]['parent'] ?? 0; }
+function wp_attachment_is_image( $id ) { return isset( $GLOBALS['attachments'][ $id ] ); }
+function wp_get_attachment_caption( $id ) { return $GLOBALS['attachments'][ $id ]['caption'] ?? ''; }
+function wp_get_attachment_image_url( $id, $size = 'thumbnail' ) { return 'https://example.com/uploads/' . $id . '-' . $size . '.png'; }
+function wp_get_attachment_url( $id ) { return 'https://example.com/uploads/' . $id . '.png'; }
+function image_get_intermediate_size( $id, $size ) { return false; }
+function wp_get_upload_dir() { return [ 'basedir' => sys_get_temp_dir() ]; }
+function wp_check_filetype( $f ) { return [ 'type' => str_ends_with( $f, '.png' ) ? 'image/png' : 'image/jpeg' ]; }
+function wp_basename( $p ) { return basename( $p ); }
