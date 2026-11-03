@@ -207,9 +207,10 @@ $r = KDNA_SeoWriter_Writer::generate('post', 43);
 check('thin page skipped without calling Claude', $r['status']==='skipped' && $r['attempts']===0 && KDNA_SeoWriter_State::get('post',43)['skipped']==='not_enough_content');
 // fields switched off are not returned
 KDNA_SeoWriter_Settings::save(['content'=>['fields'=>['seo_title'=>true,'meta_description'=>true,'focus_keyphrase'=>true,'social'=>false]]]);
-$GLOBALS['responses'] = [ $reply($good) ];
+delete_post_meta(42,'_yoast_wpseo_focuskw'); // clear the keyphrase typed in the undo test above
+$GLOBALS['http']=[]; $GLOBALS['responses'] = [ $reply($good) ];
 $r = KDNA_SeoWriter_Writer::generate('post', 42);
-check('social off: no social values', ! isset($r['values']['og_title']) && isset($r['values']['seo_title']));
+check('social off: no social values', ! isset($r['values']['og_title']) && isset($r['values']['seo_title']) && $r['status']==='ready' && count($GLOBALS['http'])===1);
 
 // an existing (human) keyphrase is kept and given to Claude
 KDNA_SeoWriter_Settings::save(['content'=>['fields'=>['seo_title'=>true,'meta_description'=>true,'focus_keyphrase'=>true,'social'=>true]]]);

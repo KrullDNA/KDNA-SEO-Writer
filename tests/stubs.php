@@ -21,7 +21,7 @@ function wp_json_encode($v){ return json_encode($v); }
 function get_post_types($a=[],$o='names'){ return ['post'=>'post','page'=>'page','product'=>'product']; }
 function get_taxonomies($a=[],$o='names'){ return ['category'=>'category','post_tag'=>'post_tag']; }
 function wp_strip_all_tags($s){ $s=preg_replace('@<(script|style)[^>]*?>.*?</\\1>@si','',$s); return trim(strip_tags($s)); }
-function wp_remote_request($u,$a){ $GLOBALS['http'][]=['url'=>$u,'args'=>$a]; $r=array_shift($GLOBALS['responses']); return $r; }
+function wp_remote_request($u,$a){ $GLOBALS['http'][]=['url'=>$u,'args'=>$a]; $r=array_shift($GLOBALS['responses']); if ($r===null) { fwrite(STDERR, "TEST SETUP: no fake response queued\n"); return new WP_Error('no_fake','none'); } return $r; }
 function wp_remote_retrieve_response_code($r){ return $r['response']['code']; }
 function wp_remote_retrieve_body($r){ return $r['body']; }
 function wp_remote_retrieve_header($r,$h){ return $r['headers'][$h] ?? ''; }
