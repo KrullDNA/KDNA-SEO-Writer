@@ -2,7 +2,7 @@
 // Stage 1 logic tests: encryption, settings cleaning, page reader, Anthropic client (with fake responses).
 require __DIR__ . '/stubs.php';
 $P = dirname( __DIR__ ) . '/kdna-seo-writer/';
-foreach (['class-kdna-sw-settings','class-kdna-sw-crypto','class-kdna-sw-claude','class-kdna-sw-reader','class-kdna-sw-install'] as $f) require $P."includes/$f.php";
+foreach (['class-kdna-sw-settings','class-kdna-sw-crypto','class-kdna-sw-claude','class-kdna-sw-reader','class-kdna-sw-install','class-kdna-sw-usage'] as $f) require $P."includes/$f.php";
 $fail=0; function check($name,$cond){ global $fail; echo ($cond?'PASS ':'FAIL ').$name."\n"; if(!$cond) $fail++; }
 
 // --- Crypto

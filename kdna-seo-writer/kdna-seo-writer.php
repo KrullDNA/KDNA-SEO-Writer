@@ -33,6 +33,9 @@ define( 'KDNA_SW_REST_NAMESPACE', 'kdna-sw/v1' );
  * lives), in WP-Cron and WP-CLI (where Action Scheduler jobs run), and in its
  * own REST routes. On a normal public page view this returns false and the
  * plugin registers nothing at all, so visitors' page loads are untouched.
+ * The block editor's save requests are included too (see
+ * kdna_sw_is_editor_save_request()), so publishing from the block editor is
+ * noticed.
  *
  * @return bool True when the plugin should load its code.
  */
@@ -45,7 +48,40 @@ function kdna_sw_is_backend_request(): bool {
 		return true;
 	}
 
-	return kdna_sw_is_own_rest_request();
+	return kdna_sw_is_own_rest_request() || kdna_sw_is_editor_save_request();
+}
+
+/**
+ * Checks whether the request is the block editor saving a post or page.
+ *
+ * The block editor saves through the core REST API (/wp/v2/...) rather than
+ * wp-admin, so the plugin has to wake up for those requests to notice a
+ * publish or update. Only requests that change something (POST, PUT, PATCH)
+ * to the core /wp/v2/ routes count, and those need a logged-in editor.
+ * Visitors' requests, including REST reads and shop basket requests to other
+ * routes, are never matched.
+ *
+ * @return bool True for a write request to the core /wp/v2/ REST routes.
+ */
+function kdna_sw_is_editor_save_request(): bool {
+	$method = isset( $_SERVER['REQUEST_METHOD'] ) && is_string( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( $_SERVER['REQUEST_METHOD'] ) : 'GET'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Compared against fixed values.
+	if ( ! in_array( $method, array( 'POST', 'PUT', 'PATCH' ), true ) ) {
+		return false;
+	}
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only reading the route name.
+	if ( isset( $_GET['rest_route'] ) && is_string( $_GET['rest_route'] ) ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		return str_starts_with( '/' . ltrim( wp_unslash( $_GET['rest_route'] ), '/' ), '/wp/v2/' );
+	}
+
+	if ( empty( $_SERVER['REQUEST_URI'] ) || ! is_string( $_SERVER['REQUEST_URI'] ) ) {
+		return false;
+	}
+
+	// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Compared as a plain string only.
+	$path = (string) wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH );
+	return str_contains( $path, '/' . trim( rest_get_url_prefix(), '/' ) . '/wp/v2/' );
 }
 
 /**
@@ -102,6 +138,22 @@ function kdna_sw_requirements_problem(): string {
 }
 
 /**
+ * Checks whether WooCommerce is switched on, before plugins have loaded.
+ *
+ * Reads the list of active plugins, which WordPress has already loaded, so
+ * this adds no database query.
+ *
+ * @return bool
+ */
+function kdna_sw_woocommerce_active(): bool {
+	$active = (array) get_option( 'active_plugins', array() );
+	if ( is_multisite() ) {
+		$active = array_merge( $active, array_keys( (array) get_site_option( 'active_sitewide_plugins', array() ) ) );
+	}
+	return in_array( 'woocommerce/woocommerce.php', $active, true );
+}
+
+/**
  * Starts the plugin, but only on backend requests.
  *
  * On public page views this function returns straight away without adding a
@@ -125,6 +177,13 @@ function kdna_sw_boot(): void {
 			}
 		);
 		return;
+	}
+
+	// Background jobs run through Action Scheduler. WooCommerce ships its own
+	// copy; without WooCommerce, the copy bundled in lib/ is loaded (4.2.0).
+	// Action Scheduler itself makes sure only the newest copy runs.
+	if ( ! kdna_sw_woocommerce_active() && is_readable( KDNA_SW_DIR . 'lib/action-scheduler/action-scheduler.php' ) ) {
+		require_once KDNA_SW_DIR . 'lib/action-scheduler/action-scheduler.php';
 	}
 
 	require_once KDNA_SW_DIR . 'includes/class-kdna-sw-plugin.php';

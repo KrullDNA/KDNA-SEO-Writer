@@ -66,6 +66,10 @@ final class KDNA_SeoWriter_Plugin {
 		// Keep the keyphrase register up to date when any keyphrase changes.
 		KDNA_SeoWriter_Keyphrases::hooks();
 
+		// Background jobs, and the guard that stops open editors wiping their results.
+		KDNA_SeoWriter_Scheduler::hooks();
+		KDNA_SeoWriter_Guard::hooks();
+
 		if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( 'WP_CLI' ) ) {
 			WP_CLI::add_command( 'kdna-sw', 'KDNA_SeoWriter_Cli' );
 		}
@@ -190,5 +194,8 @@ final class KDNA_SeoWriter_Plugin {
 	public function register_rest_routes(): void {
 		( new KDNA_SeoWriter_Rest_Settings() )->register();
 		( new KDNA_SeoWriter_Rest_Connection() )->register();
+		( new KDNA_SeoWriter_Rest_Generate() )->register();
+		( new KDNA_SeoWriter_Rest_Queue() )->register();
+		( new KDNA_SeoWriter_Rest_Overview() )->register();
 	}
 }

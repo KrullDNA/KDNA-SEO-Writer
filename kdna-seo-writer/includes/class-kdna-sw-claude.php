@@ -485,5 +485,8 @@ final class KDNA_SeoWriter_Claude {
 			),
 			array( '%s', '%s', '%d', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%s' )
 		);
+
+		// The month's totals have changed, so the spend limit check reads them afresh.
+		KDNA_SeoWriter_Usage::reset();
 	}
 }

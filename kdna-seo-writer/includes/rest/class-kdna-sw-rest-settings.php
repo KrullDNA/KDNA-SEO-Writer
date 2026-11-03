@@ -48,6 +48,10 @@ final class KDNA_SeoWriter_Rest_Settings {
 							'type'     => 'boolean',
 							'required' => false,
 						),
+						'clear_locks' => array(
+							'type'     => 'boolean',
+							'required' => false,
+						),
 					),
 				),
 			)
@@ -82,6 +86,17 @@ final class KDNA_SeoWriter_Rest_Settings {
 		$settings = $request->get_param( 'settings' );
 		if ( is_array( $settings ) ) {
 			KDNA_SeoWriter_Settings::save( $settings );
+
+			// The sweep time or the nightly switch may have changed.
+			KDNA_SeoWriter_Scheduler::schedule_sweep( true );
+		}
+
+		if ( $request->get_param( 'clear_locks' ) ) {
+			$cleared            = KDNA_SeoWriter_State::clear_all_locks();
+			$payload            = self::payload();
+			/* translators: %d: number of items. */
+			$payload['message'] = sprintf( _n( 'Locks cleared on %d item.', 'Locks cleared on %d items.', $cleared, 'kdna-seo-writer' ), $cleared );
+			return rest_ensure_response( $payload );
 		}
 
 		if ( $request->get_param( 'remove_key' ) ) {

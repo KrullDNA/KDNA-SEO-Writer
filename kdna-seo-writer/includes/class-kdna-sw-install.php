@@ -19,7 +19,7 @@ final class KDNA_SeoWriter_Install {
 	/**
 	 * The current version of the table layout.
 	 */
-	public const DB_VERSION = '2';
+	public const DB_VERSION = '3';
 
 	/**
 	 * Where the installed table layout version is remembered.
@@ -98,14 +98,15 @@ final class KDNA_SeoWriter_Install {
 			current_value longtext NULL,
 			suggested_value longtext NULL,
 			checks longtext NULL,
-			status varchar(20) NOT NULL DEFAULT 'new',
+			status varchar(20) NOT NULL DEFAULT 'pending',
+			flag varchar(20) NOT NULL DEFAULT 'new',
 			fingerprint char(32) NOT NULL DEFAULT '',
 			created_by bigint(20) unsigned NOT NULL DEFAULT 0,
 			created_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
 			updated_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
 			PRIMARY KEY  (id),
 			KEY object_lookup (object_type,object_id,field),
-			KEY status (status),
+			KEY status (status,flag),
 			KEY fingerprint (fingerprint)
 		) {$charset};";
 

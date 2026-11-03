@@ -40,7 +40,12 @@ $kdna_sw_tabs = array(
 		<p x-text="notice.text"></p>
 	</div>
 
-	<?php foreach ( array( 'overview', 'review', 'keyphrases', 'automation', 'advanced' ) as $kdna_sw_id ) : ?>
+	<?php
+	require __DIR__ . '/tab-overview.php';
+	require __DIR__ . '/tab-review.php';
+	?>
+
+	<?php foreach ( array( 'keyphrases' ) as $kdna_sw_id ) : ?>
 		<section class="kdna-sw-panel" role="tabpanel" id="kdna-sw-panel-<?php echo esc_attr( $kdna_sw_id ); ?>" aria-labelledby="kdna-sw-tab-<?php echo esc_attr( $kdna_sw_id ); ?>" x-show="tab === '<?php echo esc_js( $kdna_sw_id ); ?>'">
 			<div class="kdna-sw-card">
 				<h2><?php echo esc_html( $kdna_sw_tabs[ $kdna_sw_id ] ); ?></h2>
@@ -285,6 +290,11 @@ $kdna_sw_tabs = array(
 
 		<p><button type="button" class="button button-primary" @click="save()" :disabled="busy"><?php esc_html_e( 'Save changes', 'kdna-seo-writer' ); ?></button></p>
 	</section>
+
+	<?php
+	require __DIR__ . '/tab-automation.php';
+	require __DIR__ . '/tab-advanced.php';
+	?>
 
 	<p class="kdna-sw-footer">
 		<?php

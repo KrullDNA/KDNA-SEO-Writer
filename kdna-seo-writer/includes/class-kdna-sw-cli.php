@@ -17,6 +17,8 @@ defined( 'ABSPATH' ) || exit;
  *     wp kdna-sw generate 42 --save
  *     wp kdna-sw generate 7 --term=product_cat --save
  *     wp kdna-sw undo 15
+ *     wp kdna-sw sweep
+ *     wp kdna-sw sweep --now
  */
 final class KDNA_SeoWriter_Cli {
 
@@ -119,6 +121,45 @@ final class KDNA_SeoWriter_Cli {
 		}
 
 		WP_CLI::success( $saved ? 'Saved: ' . implode( ', ', $saved ) : 'Nothing saved, every field already had text. Add --replace to replace it.' );
+	}
+
+	/**
+	 * Runs the nightly sweep straight away.
+	 *
+	 * Without --now, the sweep queues its items as background jobs, exactly as
+	 * it does each night. With --now, each item is worked on here and then,
+	 * one after another, so you can watch the results.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--now]
+	 * : Work on the items here instead of queuing background jobs.
+	 *
+	 * @param array<int, string>    $args       Positional arguments (unused).
+	 * @param array<string, string> $assoc_args Named arguments.
+	 * @return void
+	 */
+	public function sweep( array $args, array $assoc_args ): void {
+		$limit = (int) KDNA_SeoWriter_Settings::get( 'automation', 'per_night' );
+		$items = KDNA_SeoWriter_Scheduler::sweep_candidates( $limit );
+
+		if ( ! $items ) {
+			WP_CLI::success( 'Nothing to do: no items with empty fields that automation may fill.' );
+			return;
+		}
+
+		if ( ! isset( $assoc_args['now'] ) ) {
+			KDNA_SeoWriter_Scheduler::run_sweep();
+			WP_CLI::success( count( $items ) . ' items queued. Run "wp action-scheduler run --group=kdna-seo-writer" to process them now.' );
+			return;
+		}
+
+		foreach ( $items as $item ) {
+			KDNA_SeoWriter_Scheduler::run_job( $item['type'], $item['id'], $item['subtype'], 'auto' );
+			$last = KDNA_SeoWriter_State::get( $item['type'], $item['id'] )['last'];
+			WP_CLI::log( sprintf( '%s %d (%s): %s', $item['type'], $item['id'], $item['subtype'], $last['message'] ?? '' ) );
+		}
+		WP_CLI::success( 'Sweep finished.' );
 	}
 
 	/**

@@ -56,7 +56,52 @@ final class KDNA_SeoWriter_Admin {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( KDNA_SW_FILE ), array( $this, 'action_links' ) );
 
+		add_action( 'admin_init', array( $this, 'maybe_book_sweep' ) );
+		add_action( 'admin_notices', array( $this, 'spend_notice' ) );
+
 		KDNA_SeoWriter_Debug::instance()->hooks();
+		KDNA_SeoWriter_Editor::instance()->hooks();
+		KDNA_SeoWriter_Lists::instance()->hooks();
+	}
+
+	/**
+	 * Makes sure the nightly sweep is booked, checking at most twice a day.
+	 *
+	 * The sweep books its own next run, so this is only a safety net (for
+	 * example after the plugin is first switched on, or if the job list was
+	 * cleared).
+	 *
+	 * @return void
+	 */
+	public function maybe_book_sweep(): void {
+		if ( wp_doing_ajax() || get_transient( 'kdna_sw_sweep_check' ) ) {
+			return;
+		}
+		KDNA_SeoWriter_Scheduler::schedule_sweep( false );
+		set_transient( 'kdna_sw_sweep_check', 1, 12 * HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Shows a notice when the monthly spend limit has paused automatic jobs.
+	 *
+	 * Shown to administrators on the Dashboard, the Plugins screen and the
+	 * plugin's own settings page.
+	 *
+	 * @return void
+	 */
+	public function spend_notice(): void {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( ! $screen || ! current_user_can( 'manage_options' ) || ! in_array( $screen->id, array( 'dashboard', 'plugins', $this->hook_suffix ), true ) ) {
+			return;
+		}
+		if ( ! KDNA_SeoWriter_Usage::limit_reached() ) {
+			return;
+		}
+
+		$url = admin_url( 'options-general.php?page=' . self::PAGE . '#connection' );
+		echo '<div class="notice notice-warning"><p>';
+		echo esc_html__( 'KDNA SEO Writer has paused automatic jobs because this month\'s estimated spend has reached the limit. They start again next month, or when the limit is raised. Generate now still works.', 'kdna-seo-writer' );
+		echo ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'Change the limit', 'kdna-seo-writer' ) . '</a></p></div>';
 	}
 
 	/**
@@ -65,9 +110,18 @@ final class KDNA_SeoWriter_Admin {
 	 * @return void
 	 */
 	public function add_menu(): void {
+		// The menu item shows how many items are waiting for review.
+		$waiting = KDNA_SeoWriter_Queue::count_items();
+		$badge   = $waiting > 0
+			? ' <span class="awaiting-mod count-' . (int) $waiting . '"><span class="pending-count" aria-hidden="true">' . (int) $waiting . '</span><span class="screen-reader-text">' . esc_html(
+				/* translators: %d: number of items. */
+				sprintf( _n( '%d item waiting for review', '%d items waiting for review', $waiting, 'kdna-seo-writer' ), $waiting )
+			) . '</span></span>'
+			: '';
+
 		$this->hook_suffix = (string) add_options_page(
 			__( 'KDNA SEO Writer', 'kdna-seo-writer' ),
-			__( 'KDNA SEO Writer', 'kdna-seo-writer' ),
+			__( 'KDNA SEO Writer', 'kdna-seo-writer' ) . $badge,
 			'manage_options',
 			self::PAGE,
 			array( $this, 'render_page' )
@@ -177,10 +231,38 @@ final class KDNA_SeoWriter_Admin {
 			'models'       => $models,
 			'integrations' => KDNA_SeoWriter_Plugin::instance()->integrations(),
 			'starterRules' => self::starter_rules(),
+			'page'         => self::PAGE,
+			// Open on the Overview once a key is saved, otherwise on Connection.
+			'defaultTab'   => KDNA_SeoWriter_Crypto::has_key() ? 'overview' : 'connection',
 			'i18n'         => array(
-				'genericError'     => __( 'Something went wrong. Please try again.', 'kdna-seo-writer' ),
-				'testError'        => __( 'The test could not run. Please try again.', 'kdna-seo-writer' ),
-				'confirmRemoveKey' => __( 'Remove the saved API key? The plugin will stop writing until a new key is added.', 'kdna-seo-writer' ),
+				'genericError'      => __( 'Something went wrong. Please try again.', 'kdna-seo-writer' ),
+				'testError'         => __( 'The test could not run. Please try again.', 'kdna-seo-writer' ),
+				'confirmRemoveKey'  => __( 'Remove the saved API key? The plugin will stop writing until a new key is added.', 'kdna-seo-writer' ),
+				'confirmClearLocks' => __( 'Clear every lock on the site? Fields people have edited can then be worked on again (existing text is still never replaced without approval).', 'kdna-seo-writer' ),
+				/* translators: %d: number of items. */
+				'confirmApproveAll' => __( 'Approve all %d items that match the current filters and save them into Yoast? Every change is logged and can be undone.', 'kdna-seo-writer' ),
+				'approved'          => __( 'Approved and saved into Yoast.', 'kdna-seo-writer' ),
+				/* translators: %d: number of items. */
+				'approvedMany'      => __( 'Approved %d items and saved them into Yoast.', 'kdna-seo-writer' ),
+				'rejected'          => __( 'Rejected. The same suggestion will not be offered again.', 'kdna-seo-writer' ),
+				'regenerating'      => __( 'Asking Claude for fresh suggestions. They appear here in a minute or two.', 'kdna-seo-writer' ),
+				/* translators: 1: items done, 2: items in total. */
+				'approving'         => __( 'Approving %1$d of %2$d…', 'kdna-seo-writer' ),
+				/* translators: %d: number of items. */
+				'approveAll'        => __( 'Approve all %d matching', 'kdna-seo-writer' ),
+				/* translators: 1: page number, 2: number of pages. */
+				'pageOf'            => __( 'Page %1$d of %2$d', 'kdna-seo-writer' ),
+				/* translators: 1: number of characters, 2: minimum, 3: maximum. */
+				'chars'             => __( '%1$d characters (aim for %2$d to %3$d)', 'kdna-seo-writer' ),
+				/* translators: 1: width in pixels, 2: minimum, 3: maximum. */
+				'pixels'            => __( 'About %1$d pixels wide in Google (aim for %2$d to %3$d)', 'kdna-seo-writer' ),
+				/* translators: 1: input tokens, 2: output tokens, 3: cached tokens. */
+				'tokens'            => __( '%1$s tokens in, %2$s out, %3$s read from the cache', 'kdna-seo-writer' ),
+				'flags'             => array(
+					'new'       => __( 'New', 'kdna-seo-writer' ),
+					'attention' => __( 'Replaces existing text', 'kdna-seo-writer' ),
+					'failed'    => __( 'Failed checks', 'kdna-seo-writer' ),
+				),
 			),
 		);
 	}
