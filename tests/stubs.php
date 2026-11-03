@@ -26,7 +26,8 @@ function wp_remote_retrieve_response_code($r){ return $r['response']['code']; }
 function wp_remote_retrieve_body($r){ return $r['body']; }
 function wp_remote_retrieve_header($r,$h){ return $r['headers'][$h] ?? ''; }
 function wp_rand($a,$b){ return 0; }
-function get_current_user_id(){ return 1; }
+function get_current_user_id(){ return $GLOBALS["uid"] ?? 1; }
+function wp_set_current_user( $id ){ $GLOBALS["uid"] = (int) $id; }
 function current_time($t,$g=0){ return '2026-11-04 00:00:00'; }
 function wp_parse_url($u,$c=-1){ return parse_url($u,$c); }
 function wp_unslash($v){ return $v; }

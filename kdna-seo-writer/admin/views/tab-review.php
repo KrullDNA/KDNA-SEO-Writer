@@ -65,8 +65,7 @@ defined( 'ABSPATH' ) || exit;
 		<article class="kdna-sw-card kdna-sw-item">
 			<header class="kdna-sw-item-head">
 				<label class="kdna-sw-check-inline">
-					<input type="checkbox" :value="item.key" x-model="review.selected">
-					<span class="screen-reader-text"><?php esc_html_e( 'Select', 'kdna-seo-writer' ); ?></span>
+					<input type="checkbox" :value="item.key" x-model="review.selected" :aria-label="'<?php echo esc_js( __( 'Select', 'kdna-seo-writer' ) ); ?> ' + item.title">
 				</label>
 				<h3>
 					<a :href="item.edit_url" x-text="item.title"></a>
@@ -92,7 +91,7 @@ defined( 'ABSPATH' ) || exit;
 							<textarea :id="'kdna-sw-edit-' + row.id" rows="2" class="large-text" x-model="row.edit"></textarea>
 							<span class="kdna-sw-suffix" x-show="row.field === 'seo_title' && item.title_suffix" x-text="item.title_suffix"></span>
 						</div>
-						<div class="kdna-sw-meter" x-show="meter(row, item)">
+						<div class="kdna-sw-meter" x-show="meter(row, item)" aria-hidden="true">
 							<div class="kdna-sw-meter-bar" :class="meter(row, item) && meter(row, item).ok ? 'is-good' : 'is-bad'" :style="'width:' + (meter(row, item) ? meter(row, item).percent : 0) + '%'"></div>
 						</div>
 						<p class="kdna-sw-small" x-show="meter(row, item)" x-text="meter(row, item) ? meter(row, item).text : ''"></p>
@@ -108,8 +107,8 @@ defined( 'ABSPATH' ) || exit;
 						<p class="kdna-sw-small" x-show="row.edit !== row.suggested"><?php esc_html_e( 'Edited. The checks above are for Claude\'s version, and the bar shows your version. Edited text is locked against automation once approved.', 'kdna-seo-writer' ); ?></p>
 					</div>
 					<div class="kdna-sw-row-actions">
-						<button type="button" class="button button-primary" @click="approveRow(item, row)" :disabled="busy"><?php esc_html_e( 'Approve', 'kdna-seo-writer' ); ?></button>
-						<button type="button" class="button" @click="rejectRow(item, row)" :disabled="busy"><?php esc_html_e( 'Reject', 'kdna-seo-writer' ); ?></button>
+						<button type="button" class="button button-primary" @click="approveRow(item, row)" :disabled="busy" :aria-label="'<?php echo esc_js( __( 'Approve', 'kdna-seo-writer' ) ); ?> ' + row.label + ', ' + item.title"><?php esc_html_e( 'Approve', 'kdna-seo-writer' ); ?></button>
+						<button type="button" class="button" @click="rejectRow(item, row)" :disabled="busy" :aria-label="'<?php echo esc_js( __( 'Reject', 'kdna-seo-writer' ) ); ?> ' + row.label + ', ' + item.title"><?php esc_html_e( 'Reject', 'kdna-seo-writer' ); ?></button>
 					</div>
 				</div>
 			</template>

@@ -71,6 +71,16 @@ final class KDNA_SeoWriter_Reader {
 	 * @return array<string, mixed>
 	 */
 	public static function read_post( int $post_id ): array {
+		return self::as_visitor( static fn() => self::build_post( $post_id ) );
+	}
+
+	/**
+	 * Builds the reader result for a post. Called through as_visitor().
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array<string, mixed>
+	 */
+	private static function build_post( int $post_id ): array {
 		$post = get_post( $post_id );
 		if ( ! $post instanceof WP_Post ) {
 			return self::skipped( 'post', $post_id, 'not_found', __( 'This item could not be found.', 'kdna-seo-writer' ) );
@@ -139,6 +149,17 @@ final class KDNA_SeoWriter_Reader {
 	 * @return array<string, mixed>
 	 */
 	public static function read_term( int $term_id, string $taxonomy = '' ): array {
+		return self::as_visitor( static fn() => self::build_term( $term_id, $taxonomy ) );
+	}
+
+	/**
+	 * Builds the reader result for a term. Called through as_visitor().
+	 *
+	 * @param int    $term_id  Term ID.
+	 * @param string $taxonomy Taxonomy name, if known.
+	 * @return array<string, mixed>
+	 */
+	private static function build_term( int $term_id, string $taxonomy = '' ): array {
 		$term = get_term( $term_id, $taxonomy );
 		if ( ! $term instanceof WP_Term ) {
 			return self::skipped( 'term', $term_id, 'not_found', __( 'This category or tag could not be found.', 'kdna-seo-writer' ) );
@@ -165,6 +186,33 @@ final class KDNA_SeoWriter_Reader {
 			),
 			$html
 		);
+	}
+
+	/**
+	 * Renders content as a logged-out visitor would see it.
+	 *
+	 * Background jobs can run while an administrator is logged in (Action
+	 * Scheduler's quick runner passes their login along), and the debug panel
+	 * runs as the administrator. Some shortcodes and widgets show personal
+	 * details to the person viewing (account pages, order lists, greetings,
+	 * pre-filled forms). Rendering as nobody makes sure none of that is ever
+	 * sent to Anthropic. The current user is put back straight afterwards.
+	 *
+	 * @param callable $build Builds the reader result.
+	 * @return array<string, mixed>
+	 */
+	private static function as_visitor( callable $build ): array {
+		$user_id = get_current_user_id();
+		if ( $user_id ) {
+			wp_set_current_user( 0 );
+		}
+		try {
+			return $build();
+		} finally {
+			if ( $user_id ) {
+				wp_set_current_user( $user_id );
+			}
+		}
 	}
 
 	/**

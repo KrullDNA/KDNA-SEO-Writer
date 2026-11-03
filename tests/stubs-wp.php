@@ -10,7 +10,7 @@ function get_post_type($id){ return $GLOBALS['posts'][$id]->post_type ?? ( isset
 function get_the_title($p){ $p = is_object($p)?$p:get_post($p); return $p ? $p->post_title : ''; }
 function get_permalink($p){ $p = is_object($p)?$p:get_post($p); return 'https://example.com/'.($p?$p->ID:0).'/'; }
 function has_blocks($c){ return str_contains((string)$c,'<!-- wp:'); }
-function do_blocks($c){ return $c; } function wpautop($c){ return $c; } function do_shortcode($c){ return $c; } function strip_shortcodes($c){ return $c; }
+function do_blocks($c){ return $c; } function wpautop($c){ return $c; } function do_shortcode($c){ return str_replace( "[whoami]", "Signed in as user " . get_current_user_id(), (string) $c ); } function strip_shortcodes($c){ return $c; }
 function setup_postdata($p){}
 function get_post_meta($id,$k,$single=false){ return $GLOBALS['meta'][$id][$k] ?? ''; }
 function update_post_meta($id,$k,$v){ $old = $GLOBALS['meta'][$id][$k] ?? null; $GLOBALS['meta'][$id][$k] = is_string($v) ? stripslashes($v) : $v; do_action_stub($old===null?'added_post_meta':'updated_post_meta',0,$id,$k); return true; }

@@ -25,13 +25,15 @@ $kdna_sw_tabs = array(
 	<h1><?php esc_html_e( 'KDNA SEO Writer', 'kdna-seo-writer' ); ?></h1>
 	<p class="kdna-sw-intro"><?php esc_html_e( 'Writes SEO titles, meta descriptions, focus keyphrases and social text with Claude, checks them against Yoast\'s rules and saves them into Yoast.', 'kdna-seo-writer' ); ?></p>
 
-	<nav class="nav-tab-wrapper kdna-sw-tabs" role="tablist" aria-label="<?php esc_attr_e( 'Settings sections', 'kdna-seo-writer' ); ?>">
+	<nav class="nav-tab-wrapper kdna-sw-tabs" role="tablist" aria-label="<?php esc_attr_e( 'Settings sections', 'kdna-seo-writer' ); ?>" @keydown="tabKeys($event)">
 		<?php foreach ( $kdna_sw_tabs as $kdna_sw_id => $kdna_sw_label ) : ?>
 			<button type="button" role="tab" class="nav-tab"
 				id="kdna-sw-tab-<?php echo esc_attr( $kdna_sw_id ); ?>"
 				aria-controls="kdna-sw-panel-<?php echo esc_attr( $kdna_sw_id ); ?>"
 				:class="{ 'nav-tab-active': tab === '<?php echo esc_js( $kdna_sw_id ); ?>' }"
 				:aria-selected="tab === '<?php echo esc_js( $kdna_sw_id ); ?>' ? 'true' : 'false'"
+				:tabindex="tab === '<?php echo esc_js( $kdna_sw_id ); ?>' ? 0 : -1"
+				data-tab="<?php echo esc_attr( $kdna_sw_id ); ?>"
 				@click="go('<?php echo esc_js( $kdna_sw_id ); ?>')"><?php echo esc_html( $kdna_sw_label ); ?></button>
 		<?php endforeach; ?>
 	</nav>

@@ -152,6 +152,35 @@
 					}
 				},
 
+				/**
+				 * Moves between tabs with the arrow, Home and End keys, as screen
+				 * reader and keyboard users expect from a row of tabs.
+				 *
+				 * @param {KeyboardEvent} event Key press on the tab row.
+				 */
+				tabKeys: function ( event ) {
+					var keys = [ 'ArrowRight', 'ArrowLeft', 'Home', 'End' ];
+					if ( keys.indexOf( event.key ) === -1 ) {
+						return;
+					}
+					event.preventDefault();
+					var index = TABS.indexOf( this.tab );
+					if ( 'ArrowRight' === event.key ) {
+						index = ( index + 1 ) % TABS.length;
+					} else if ( 'ArrowLeft' === event.key ) {
+						index = ( index - 1 + TABS.length ) % TABS.length;
+					} else {
+						index = 'Home' === event.key ? 0 : TABS.length - 1;
+					}
+					this.go( TABS[ index ] );
+					this.$nextTick( () => {
+						var button = document.querySelector( '.kdna-sw-tabs [data-tab="' + TABS[ index ] + '"]' );
+						if ( button ) {
+							button.focus();
+						}
+					} );
+				},
+
 				/* ---------------- Review tab ---------------- */
 
 				/**

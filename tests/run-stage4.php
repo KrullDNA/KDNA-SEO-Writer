@@ -225,5 +225,12 @@ page( 205, '<p>Plenty of words on this page to be read properly by the reader.</
 check( 'no keyphrase yet: message only', KDNA_SeoWriter_Report::build( 'post', 205 )['checks'] === [] && '' !== KDNA_SeoWriter_Report::build( 'post', 205 )['message'] );
 check( 'page content never changed by the report', $GLOBALS['posts'][201]->post_content === $GLOBALS['wpdb']->get_var( 'SELECT post_content FROM wp_posts WHERE ID = 201' ) );
 
+echo "-- privacy\n";
+page( 300, '<p>Welcome to our skincare range, made gently in small batches for sensitive skin.</p><p>[whoami]</p>' );
+$GLOBALS['uid'] = 1;
+$read = KDNA_SeoWriter_Reader::read_post( 300 );
+check( 'content rendered as a logged-out visitor', str_contains( $read['text'], 'Signed in as user 0' ) && ! str_contains( $read['text'], 'user 1' ) );
+check( 'the administrator is logged back in afterwards', 1 === get_current_user_id() );
+
 @unlink( $png );
 echo $fail ? "\n$fail FAILED\n" : "\nALL PASSED\n";

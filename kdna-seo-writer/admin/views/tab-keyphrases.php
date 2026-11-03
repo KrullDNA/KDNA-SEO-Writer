@@ -42,7 +42,7 @@ defined( 'ABSPATH' ) || exit;
 						</td>
 						<td><a :href="row.edit_url" x-text="row.title"></a></td>
 						<td x-text="row.type_label"></td>
-						<td><button type="button" class="button" @click="toggleReport(row)" :aria-expanded="keyphrases.open === row.key ? 'true' : 'false'" x-text="keyphrases.open === row.key ? '<?php echo esc_js( __( 'Hide report', 'kdna-seo-writer' ) ); ?>' : '<?php echo esc_js( __( 'Report', 'kdna-seo-writer' ) ); ?>'"></button></td>
+						<td><button type="button" class="button" @click="toggleReport(row)" :aria-label="(keyphrases.open === row.key ? '<?php echo esc_js( __( 'Hide report for', 'kdna-seo-writer' ) ); ?> ' : '<?php echo esc_js( __( 'Report for', 'kdna-seo-writer' ) ); ?> ') + row.title" :aria-expanded="keyphrases.open === row.key ? 'true' : 'false'" x-text="keyphrases.open === row.key ? '<?php echo esc_js( __( 'Hide report', 'kdna-seo-writer' ) ); ?>' : '<?php echo esc_js( __( 'Report', 'kdna-seo-writer' ) ); ?>'"></button></td>
 					</tr>
 					<tr x-show="keyphrases.open === row.key">
 						<td colspan="4">
@@ -59,7 +59,7 @@ defined( 'ABSPATH' ) || exit;
 												<p class="kdna-sw-suggest" x-show="check.suggestion">
 													<span class="kdna-sw-small" x-text="check.suggestion_label + ':'"></span>
 													<code x-text="check.suggestion"></code>
-													<button type="button" class="button-link" @click="copy(check.suggestion, $event)"><?php esc_html_e( 'Copy', 'kdna-seo-writer' ); ?></button>
+													<button type="button" class="button-link" @click="copy(check.suggestion, $event)" :aria-label="'<?php echo esc_js( __( 'Copy', 'kdna-seo-writer' ) ); ?> ' + check.suggestion_label"><?php esc_html_e( 'Copy', 'kdna-seo-writer' ); ?></button>
 												</p>
 												<p x-show="check.can_apply"><button type="button" class="button" @click="applySlug(row)" :disabled="busy"><?php esc_html_e( 'Apply this slug', 'kdna-seo-writer' ); ?></button></p>
 												<p class="kdna-sw-warning" x-show="check.warning" x-text="check.warning"></p>

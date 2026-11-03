@@ -152,6 +152,7 @@
 					unlock.type = 'button';
 					unlock.className = 'button-link kdna-sw-unlock';
 					unlock.setAttribute( 'data-kdna-sw-unlock', field.group );
+					unlock.setAttribute( 'aria-label', i18n.unlock + ' ' + field.label );
 					unlock.textContent = i18n.unlock;
 					li.appendChild( document.createTextNode( ' ' ) );
 					li.appendChild( unlock );
@@ -215,6 +216,7 @@
 				add( tip, 'code', '', check.suggestion );
 				var copy = add( tip, 'button', 'button-link', i18n.copy );
 				copy.type = 'button';
+				copy.setAttribute( 'aria-label', i18n.copy + ' ' + check.suggestion_label );
 				copy.setAttribute( 'data-kdna-sw-copy', check.suggestion );
 			}
 			if ( check.can_apply ) {
@@ -533,7 +535,7 @@
 						el( 'span', { className: 'kdna-sw-field-label' }, field.label ),
 						' ',
 						el( 'span', { className: 'kdna-sw-field-status' }, field.text ),
-						'locked' === field.status ? el( Button, { variant: 'link', className: 'kdna-sw-unlock', onClick: function () {
+						'locked' === field.status ? el( Button, { variant: 'link', className: 'kdna-sw-unlock', 'aria-label': i18n.unlock + ' ' + field.label, onClick: function () {
 							unlock( field.group );
 						} }, i18n.unlock ) : null
 					);
@@ -579,7 +581,7 @@
 					check.suggestion ? el( 'div', { className: 'kdna-sw-suggestion' },
 						el( 'span', { className: 'kdna-sw-suggestion-label' }, check.suggestion_label + ':' ),
 						el( 'code', null, check.suggestion ),
-						el( Button, { variant: 'link', onClick: function ( event ) {
+						el( Button, { variant: 'link', 'aria-label': i18n.copy + ' ' + check.suggestion_label, onClick: function ( event ) {
 							copyText( check.suggestion, event.currentTarget );
 						} }, i18n.copy )
 					) : null,
