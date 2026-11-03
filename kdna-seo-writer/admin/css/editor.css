@@ -1,0 +1,153 @@
+/* KDNA SEO Writer edit screen panels. Loaded only on edit screens of enabled content types. */
+
+.kdna-sw-box,
+.kdna-sw-box-block {
+	--kdna-sw-good: #00733b;
+	--kdna-sw-wait: #996800;
+	--kdna-sw-bad: #b32d2e;
+	--kdna-sw-muted: #646970;
+}
+
+.kdna-sw-fields {
+	margin: 0 0 10px;
+	padding: 0;
+	list-style: none;
+}
+
+.kdna-sw-field {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 4px 8px;
+	margin: 0;
+	padding: 5px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.kdna-sw-field-label {
+	font-weight: 600;
+}
+
+.kdna-sw-field-status::before {
+	content: "";
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	margin-right: 6px;
+	border-radius: 50%;
+	background: var(--kdna-sw-muted);
+	vertical-align: middle;
+}
+
+.kdna-sw-field.is-filled .kdna-sw-field-status::before {
+	background: var(--kdna-sw-good);
+}
+
+.kdna-sw-field.is-waiting .kdna-sw-field-status::before {
+	background: var(--kdna-sw-wait);
+}
+
+.kdna-sw-field.is-missing .kdna-sw-field-status::before {
+	background: var(--kdna-sw-bad);
+}
+
+.kdna-sw-unlock.button-link,
+.kdna-sw-unlock.components-button.is-link {
+	font-size: 12px;
+}
+
+.kdna-sw-msg:empty {
+	display: none;
+}
+
+.kdna-sw-box .description,
+.kdna-sw-box-block .description {
+	color: var(--kdna-sw-muted);
+}
+
+.kdna-sw-term-box {
+	max-width: 520px;
+	margin-top: 20px;
+}
+
+.kdna-sw-term-box .postbox-header h2 {
+	padding: 8px 12px;
+	font-size: 14px;
+}
+
+/* Keyphrase report */
+
+.kdna-sw-report h4,
+.kdna-sw-report-title {
+	margin: 16px 0 6px;
+	font-size: 13px;
+}
+
+.kdna-sw-report-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.kdna-sw-report-check {
+	margin: 0;
+	padding: 6px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.kdna-sw-report-check p {
+	margin: 4px 0;
+}
+
+.kdna-sw-report-head {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.kdna-sw-report-status::before {
+	content: "";
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	margin-right: 6px;
+	border-radius: 50%;
+	background: var(--kdna-sw-bad, #b32d2e);
+	vertical-align: middle;
+}
+
+.kdna-sw-report-check.is-good .kdna-sw-report-status::before {
+	background: var(--kdna-sw-good, #00733b);
+}
+
+.kdna-sw-report-check.is-okay .kdna-sw-report-status::before {
+	background: var(--kdna-sw-wait, #996800);
+}
+
+.kdna-sw-suggestion {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 8px;
+	margin: 4px 0;
+	padding: 6px 8px;
+	background: #f6f7f7;
+	border-radius: 4px;
+}
+
+.kdna-sw-suggestion code {
+	background: none;
+	padding: 0;
+	white-space: normal;
+	word-break: break-word;
+}
+
+.kdna-sw-suggestion-label {
+	font-size: 12px;
+	color: var(--kdna-sw-muted, #646970);
+}
+
+.kdna-sw-warning {
+	color: #8a2424;
+	font-size: 12px;
+}

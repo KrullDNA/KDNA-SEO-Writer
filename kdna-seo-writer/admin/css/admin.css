@@ -1,0 +1,411 @@
+/* KDNA SEO Writer admin styles. Loaded on the plugin's settings screen only. */
+
+.kdna-sw {
+	--kdna-sw-ink: #1d2327;
+	--kdna-sw-muted: #50575e;
+	--kdna-sw-line: #dcdcde;
+	--kdna-sw-card: #fff;
+	--kdna-sw-good: #00733b;
+	--kdna-sw-good-bg: #edfaef;
+	--kdna-sw-bad: #b32d2e;
+	--kdna-sw-bad-bg: #fcf0f1;
+	--kdna-sw-pill-bg: #f0f0f1;
+	--kdna-sw-radius: 6px;
+	--kdna-sw-gap: 16px;
+	max-width: 1000px;
+}
+
+[x-cloak] {
+	display: none !important;
+}
+
+.kdna-sw-intro {
+	color: var(--kdna-sw-muted);
+	margin-top: 0;
+}
+
+.kdna-sw-tabs {
+	margin-bottom: var(--kdna-sw-gap);
+}
+
+.kdna-sw-tabs .nav-tab {
+	cursor: pointer;
+	font-family: inherit;
+}
+
+.kdna-sw-tabs .nav-tab:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: -2px;
+	box-shadow: none;
+}
+
+.kdna-sw-notice {
+	margin: 0 0 var(--kdna-sw-gap);
+}
+
+.kdna-sw-card {
+	background: var(--kdna-sw-card);
+	border: 1px solid var(--kdna-sw-line);
+	border-radius: var(--kdna-sw-radius);
+	padding: 4px 20px 16px;
+	margin-bottom: var(--kdna-sw-gap);
+}
+
+.kdna-sw-card h2 {
+	font-size: 15px;
+	margin: 16px 0 12px;
+}
+
+.kdna-sw-field {
+	margin: 0 0 18px;
+	border: 0;
+	padding: 0;
+}
+
+.kdna-sw-field > label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+	color: var(--kdna-sw-ink);
+}
+
+.kdna-sw-field .description,
+.kdna-sw-card > .description {
+	color: var(--kdna-sw-muted);
+	max-width: 720px;
+}
+
+.kdna-sw-radio,
+.kdna-sw-check {
+	display: block;
+	margin: 0 0 8px;
+}
+
+.kdna-sw-table {
+	margin: 12px 0;
+}
+
+.kdna-sw-table th[scope="row"] code {
+	margin-left: 6px;
+	font-size: 11px;
+	color: var(--kdna-sw-muted);
+}
+
+.kdna-sw-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+}
+
+.kdna-sw-key-status {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+}
+
+.kdna-sw-pill {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 999px;
+	background: var(--kdna-sw-pill-bg);
+	color: var(--kdna-sw-ink);
+	font-size: 12px;
+}
+
+.kdna-sw-pill.is-good,
+.kdna-sw-test-result.is-good {
+	background: var(--kdna-sw-good-bg);
+	color: var(--kdna-sw-good);
+}
+
+.kdna-sw-pill.is-bad,
+.kdna-sw-test-result.is-bad {
+	background: var(--kdna-sw-bad-bg);
+	color: var(--kdna-sw-bad);
+}
+
+.kdna-sw-test-result {
+	padding: 4px 10px;
+	border-radius: var(--kdna-sw-radius);
+}
+
+.kdna-sw-link-danger.button-link {
+	color: var(--kdna-sw-bad);
+}
+
+.kdna-sw-starters .button {
+	margin: 0 8px 8px 0;
+}
+
+.kdna-sw-footer {
+	color: var(--kdna-sw-muted);
+	font-size: 12px;
+}
+
+@media screen and (max-width: 782px) {
+	.kdna-sw-card {
+		padding: 4px 12px 12px;
+	}
+
+	.kdna-sw-table td,
+	.kdna-sw-table th {
+		display: block;
+		width: auto;
+	}
+
+	.kdna-sw-table thead {
+		display: none;
+	}
+}
+
+/* ---- Review tab ---- */
+
+.kdna-sw {
+	--kdna-sw-wait: #996800;
+	--kdna-sw-wait-bg: #fcf9e8;
+}
+
+.kdna-sw-pill.is-wait {
+	background: var(--kdna-sw-wait-bg);
+	color: var(--kdna-sw-wait);
+}
+
+.kdna-sw-filters,
+.kdna-sw-bulk {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 12px;
+	margin: 12px 0;
+}
+
+.kdna-sw-filters label span {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.kdna-sw-check-inline {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.kdna-sw-progress,
+.kdna-sw-small {
+	color: var(--kdna-sw-muted);
+	font-size: 12px;
+}
+
+.kdna-sw-item-head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin: 12px 0 4px;
+}
+
+.kdna-sw-item-head h3 {
+	flex: 1;
+	margin: 0;
+	font-size: 14px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.kdna-sw-row {
+	display: grid;
+	grid-template-columns: 170px 1fr auto;
+	gap: 12px;
+	padding: 12px 0;
+	border-top: 1px solid var(--kdna-sw-line);
+}
+
+.kdna-sw-row-label {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 6px;
+}
+
+.kdna-sw-row-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.kdna-sw-current {
+	margin: 0 0 8px;
+	word-break: break-word;
+}
+
+.kdna-sw-edit-wrap {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+}
+
+.kdna-sw-edit-wrap textarea {
+	flex: 1 1 260px;
+}
+
+.kdna-sw-suffix {
+	color: var(--kdna-sw-muted);
+	white-space: nowrap;
+}
+
+.kdna-sw-meter {
+	height: 6px;
+	margin: 8px 0 2px;
+	background: var(--kdna-sw-pill-bg);
+	border-radius: 3px;
+	overflow: hidden;
+	max-width: 520px;
+}
+
+.kdna-sw-meter-bar {
+	height: 100%;
+	background: var(--kdna-sw-bad);
+}
+
+.kdna-sw-meter-bar.is-good {
+	background: var(--kdna-sw-good);
+}
+
+.kdna-sw-checks {
+	margin: 8px 0 0;
+	font-size: 12px;
+}
+
+.kdna-sw-checks li {
+	margin: 2px 0;
+}
+
+.kdna-sw-checks li.is-good span[aria-hidden] {
+	color: var(--kdna-sw-good);
+}
+
+.kdna-sw-checks li.is-bad span[aria-hidden] {
+	color: var(--kdna-sw-bad);
+}
+
+.kdna-sw-item-foot {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding-top: 12px;
+	border-top: 1px solid var(--kdna-sw-line);
+}
+
+.kdna-sw-pages {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: var(--kdna-sw-gap);
+}
+
+/* ---- Overview tab ---- */
+
+.kdna-sw-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: var(--kdna-sw-gap);
+	margin-bottom: var(--kdna-sw-gap);
+}
+
+.kdna-sw-stat {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	background: var(--kdna-sw-card);
+	border: 1px solid var(--kdna-sw-line);
+	border-radius: var(--kdna-sw-radius);
+	padding: 16px 20px;
+}
+
+.kdna-sw-stat-number {
+	font-size: 26px;
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--kdna-sw-ink);
+}
+
+.kdna-sw-stat-number.kdna-sw-stat-text {
+	font-size: 16px;
+}
+
+.kdna-sw-stat-label {
+	color: var(--kdna-sw-muted);
+}
+
+.kdna-sw-stat .button-link {
+	align-self: flex-start;
+}
+
+.kdna-sw-problems {
+	border-top: 1px solid var(--kdna-sw-line);
+	padding: 8px 0;
+}
+
+.kdna-sw-problems summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.kdna-sw-problems ul {
+	margin: 8px 0 0 18px;
+	list-style: disc;
+}
+
+.kdna-sw-panel .notice.inline {
+	margin: 0 0 var(--kdna-sw-gap);
+}
+
+@media screen and (max-width: 782px) {
+	.kdna-sw-row {
+		grid-template-columns: 1fr;
+	}
+
+	.kdna-sw-row-actions {
+		flex-direction: row;
+	}
+}
+
+/* ---- Keyphrases tab and image suggestions ---- */
+
+.kdna-sw-thumb {
+	display: block;
+	max-width: 160px;
+	max-height: 120px;
+	margin: 0 0 8px;
+	border: 1px solid var(--kdna-sw-line);
+	border-radius: 4px;
+	object-fit: contain;
+	background: var(--kdna-sw-pill-bg);
+}
+
+.kdna-sw-report-rows {
+	margin: 0;
+}
+
+.kdna-sw-report-rows li {
+	padding: 8px 0;
+	border-bottom: 1px solid var(--kdna-sw-line);
+}
+
+.kdna-sw-report-rows p {
+	margin: 4px 0;
+}
+
+.kdna-sw-suggest code {
+	white-space: normal;
+}
+
+.kdna-sw-warning {
+	color: var(--kdna-sw-bad);
+}
