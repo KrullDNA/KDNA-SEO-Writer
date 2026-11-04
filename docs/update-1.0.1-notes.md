@@ -1,6 +1,6 @@
 # Version 1.0.1 notes
 
-Package: `kdna-seo-writer-1.0.1.zip` (1.0.0 kept for rollback). No database changes.
+Package: `kdna-seo-writer-1.0.1.zip`. No database changes. Earlier zips are not kept in the repository; 1.0.0 can still be rebuilt from its commit if ever needed.
 
 ## Changes
 
