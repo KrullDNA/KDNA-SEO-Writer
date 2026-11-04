@@ -95,19 +95,20 @@ final class KDNA_SeoWriter_Scheduler {
 	 * @param string $subtype     Post type or taxonomy.
 	 * @param string $mode        auto, manual, suggest or regenerate.
 	 * @param int    $delay       Seconds from now.
+	 * @param string $group       Action Scheduler group. Fill empty fields now uses its own.
 	 * @return bool True when a job was queued (or one was already waiting).
 	 */
-	public static function queue( string $object_type, int $id, string $subtype, string $mode, int $delay = 0 ): bool {
+	public static function queue( string $object_type, int $id, string $subtype, string $mode, int $delay = 0, string $group = self::GROUP ): bool {
 		if ( ! self::available() ) {
 			return false;
 		}
 
 		$args = array( $object_type, $id, $subtype, $mode );
-		if ( as_has_scheduled_action( self::JOB, $args, self::GROUP ) ) {
+		if ( as_has_scheduled_action( self::JOB, $args, $group ) ) {
 			return true;
 		}
 
-		as_schedule_single_action( time() + max( 0, $delay ), self::JOB, $args, self::GROUP );
+		as_schedule_single_action( time() + max( 0, $delay ), self::JOB, $args, $group );
 		KDNA_SeoWriter_State::set_job( $object_type, $id, true );
 
 		return true;

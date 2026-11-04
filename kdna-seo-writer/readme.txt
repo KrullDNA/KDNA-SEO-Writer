@@ -3,7 +3,7 @@ Contributors: kdna
 Tags: seo, yoast, meta description, alt text, ai
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 1.0.0
+Stable tag: 1.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -40,7 +40,7 @@ It is a backend tool. Public pages load no files, run no queries and are exactly
 
 == Installation ==
 
-1. Upload kdna-seo-writer-1.0.0.zip in Plugins > Add New > Upload Plugin, then activate it.
+1. Upload kdna-seo-writer-1.0.3.zip in Plugins > Add New > Upload Plugin, then activate it.
 2. Make sure Yoast SEO is active.
 3. Get an Anthropic API key:
    * Go to console.anthropic.com and sign in or create an account.
@@ -71,6 +71,7 @@ Settings > KDNA SEO Writer > Brand voice:
 
 * On publish and update: if a field is empty, a background job runs about two minutes later. Saving is never slowed down.
 * Nightly sweep: at a quiet hour (2am by default), up to a set number of items with empty fields (50 by default), one at a time. Images with no alt text use any places left.
+* Fill empty fields now: on the Overview tab, for the first run on a site. It works through every item and image that needs doing straight away, with progress and a Stop button.
 * Generate now: in the edit screen's SEO Writer panel (classic and block editor), in Elementor's Page Settings, as a "Generate SEO" link in list screens, and as a bulk action.
 
 Background jobs run through Action Scheduler. WooCommerce includes it; without WooCommerce the plugin loads its own copy. You can see the jobs under Tools > Scheduled Actions, group kdna-seo-writer.
@@ -155,6 +156,20 @@ The SEO titles the plugin writes keep Yoast's %%sep%% and %%sitename%% variables
 Yoast's SEO fields are always kept, including everything the plugin wrote. The plugin's own data (settings, API key, review queue, log) is only removed if "Delete the plugin's own data when the plugin is deleted" is ticked in the Advanced tab.
 
 == Changelog ==
+
+= 1.0.3 =
+* New: Fill empty fields now, on the Overview tab, for the first run on a site. Shows how many items and images need doing and roughly what it will cost, then works through them all in the background, with progress and a Stop button.
+* Generate now works on a new or unsaved post in both the classic and block editors: it saves the post as a draft first. On a published post with unsaved changes, it asks for Update first.
+
+= 1.0.2 =
+* Fix: a browser or password manager filling the API key box with a saved password no longer causes an error when saving other tabs, and can never replace the saved key. Only the Connection tab sends a key, and only one starting with sk-ant-.
+* A rejected key now saves nothing, so the other settings are never left half saved.
+
+= 1.0.1 =
+* Content types with no public pages (such as JetEngine listing items and Elementor templates), and content types Yoast keeps out of search results, are now left out automatically. The Content tab lists them and says why.
+* JetEngine fields can be marked as headings by adding :h2 to :h6, for example article_sections.section_heading:h2.
+* Repeaters are now read row by row when several of their sub-fields are listed, so each heading is followed by its own text.
+* Rich text JetEngine fields are no longer wrapped in an extra paragraph.
 
 = 1.0.0 =
 * First release.

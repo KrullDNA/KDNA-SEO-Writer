@@ -199,5 +199,6 @@ final class KDNA_SeoWriter_Plugin {
 		( new KDNA_SeoWriter_Rest_Queue() )->register();
 		( new KDNA_SeoWriter_Rest_Overview() )->register();
 		( new KDNA_SeoWriter_Rest_Report() )->register();
+		( new KDNA_SeoWriter_Rest_Fill() )->register();
 	}
 }

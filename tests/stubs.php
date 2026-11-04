@@ -37,3 +37,9 @@ function wp_doing_cron(){ return $GLOBALS['cron']; }
 function plugin_dir_path($f){ return dirname($f).'/'; } function plugin_dir_url($f){ return 'http://x/'; }
 class WPDB_Stub { public $prefix='wp_'; function insert($t,$d,$f){ $GLOBALS['inserts'][]=[$t,$d]; return 1; } }
 $GLOBALS['wpdb'] = new WPDB_Stub();
+// Content type stand-ins (1.0.1): every type is public and viewable unless listed in $GLOBALS['not_viewable'].
+function get_post_type_object($t){ return (object)['name'=>$t,'labels'=>(object)['singular_name'=>ucfirst($t),'name'=>ucfirst($t).'s']]; }
+function get_taxonomy($t){ return (object)['name'=>$t,'labels'=>(object)['singular_name'=>'Category','name'=>'Categories'],'object_type'=>['post']]; }
+function is_post_type_viewable($o){ return ! in_array( $o->name, $GLOBALS['not_viewable'] ?? [], true ); }
+function is_taxonomy_viewable($o){ return ! in_array( $o->name, $GLOBALS['not_viewable'] ?? [], true ); }
+function apply_filters( $h, $v, ...$a ) { return $v; }

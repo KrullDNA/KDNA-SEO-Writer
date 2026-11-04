@@ -27,6 +27,31 @@ final class KDNA_SeoWriter_Settings {
 	public const MODES = array( 'auto', 'review', 'off' );
 
 	/**
+	 * Content types that are public in WordPress but are really building
+	 * blocks for designs (templates, listing items, popups, menus), so they
+	 * never need SEO metadata. Other plugins' types can be added with the
+	 * kdna_sw_excluded_post_types filter.
+	 */
+	private const INTERNAL_POST_TYPES = array(
+		'attachment',
+		'jet-engine',
+		'jet-smart-filters',
+		'jet-menu',
+		'jet-popup',
+		'jet-theme-core',
+		'jet-woo-builder',
+		'jet-form-builder',
+		'jet-engine-booking',
+		'elementor_library',
+		'elementor_snippet',
+		'e-floating-buttons',
+		'wp_block',
+		'wp_template',
+		'wp_template_part',
+		'wp_navigation',
+	);
+
+	/**
 	 * Settings loaded during this request, so the option is only read once.
 	 *
 	 * @var array<string, mixed>|null
@@ -151,6 +176,12 @@ final class KDNA_SeoWriter_Settings {
 	 * @return string One of auto, review or off.
 	 */
 	public static function mode_for( string $kind, string $subtype ): string {
+		// Content types with no public pages, or that Yoast keeps out of
+		// search results, are always treated as Off.
+		if ( '' !== self::hidden_reason( $kind, $subtype ) ) {
+			return 'off';
+		}
+
 		$group = 'taxonomy' === $kind ? 'taxonomies' : 'post_types';
 		$saved = self::get( 'content', $group );
 
@@ -159,6 +190,42 @@ final class KDNA_SeoWriter_Settings {
 		}
 
 		return ( 'post_type' === $kind && 'post' === $subtype ) ? 'auto' : 'review';
+	}
+
+	/**
+	 * Explains why a content type is left out of the plugin, if it is.
+	 *
+	 * - internal: a design building block, such as JetEngine listing items or
+	 *   Elementor templates, which visitors never see as a page.
+	 * - no_pages: WordPress does not give its items public pages.
+	 * - noindex: Yoast is set to keep it out of search results, so metadata
+	 *   for it would never be shown.
+	 *
+	 * @param string $kind    Either post_type or taxonomy.
+	 * @param string $subtype The post type or taxonomy name.
+	 * @return string Empty when the content type is used, otherwise the reason.
+	 */
+	public static function hidden_reason( string $kind, string $subtype ): string {
+		if ( 'taxonomy' === $kind ) {
+			$object = get_taxonomy( $subtype );
+			if ( 'post_format' === $subtype ) {
+				return 'internal';
+			}
+			if ( ! $object || ! is_taxonomy_viewable( $object ) ) {
+				return 'no_pages';
+			}
+		} else {
+			$internal = (array) apply_filters( 'kdna_sw_excluded_post_types', self::INTERNAL_POST_TYPES );
+			if ( in_array( $subtype, $internal, true ) ) {
+				return 'internal';
+			}
+			$object = get_post_type_object( $subtype );
+			if ( ! $object || ! is_post_type_viewable( $object ) ) {
+				return 'no_pages';
+			}
+		}
+
+		return KDNA_SeoWriter_Yoast::hidden_from_search( 'taxonomy' === $kind ? 'term' : 'post', $subtype ) ? 'noindex' : '';
 	}
 
 	/**
@@ -345,20 +412,49 @@ final class KDNA_SeoWriter_Settings {
 	}
 
 	/**
-	 * Cleans a comma separated list of field names, such as "intro, faq.answer".
+	 * Cleans a comma separated list of field names, such as
+	 * "intro, faq.question:h3, faq.answer".
 	 *
 	 * Letters, numbers, underscores, hyphens and dots (for repeater sub-fields)
-	 * are allowed. Anything else is removed.
+	 * are allowed. A field can end in :h2 to :h6 to be read as a heading.
+	 * Anything else is removed.
 	 *
 	 * @param string $list Comma or line separated field names.
 	 * @return string Clean, comma separated list.
 	 */
 	public static function clean_field_paths( string $list ): string {
 		$paths = preg_split( '/[\s,]+/', $list ) ?: array();
-		$paths = array_map(
-			static fn( $path ) => trim( (string) preg_replace( '/[^A-Za-z0-9_.\-]/', '', $path ), '.' ),
-			$paths
-		);
-		return implode( ', ', array_values( array_unique( array_filter( $paths ) ) ) );
+		$clean = array();
+		foreach ( $paths as $path ) {
+			$parts = explode( ':', (string) $path, 2 );
+			$name  = trim( (string) preg_replace( '/[^A-Za-z0-9_.\-]/', '', $parts[0] ), '.' );
+			$tag   = isset( $parts[1] ) ? strtolower( trim( $parts[1] ) ) : '';
+			if ( '' === $name ) {
+				continue;
+			}
+			$clean[] = $name . ( preg_match( '/^h[2-6]$/', $tag ) ? ':' . $tag : '' );
+		}
+		return implode( ', ', array_values( array_unique( $clean ) ) );
+	}
+
+	/**
+	 * Splits the saved field list into field paths and how each is read.
+	 *
+	 * @param string $list Saved list, for example "intro, sections.heading:h2".
+	 * @return array<int, array{keys: array<int, string>, tag: string}>
+	 */
+	public static function field_paths( string $list ): array {
+		$out = array();
+		foreach ( array_filter( array_map( 'trim', explode( ',', $list ) ) ) as $item ) {
+			$parts = explode( ':', $item, 2 );
+			$keys  = array_values( array_filter( explode( '.', $parts[0] ), 'strlen' ) );
+			if ( $keys ) {
+				$out[] = array(
+					'keys' => $keys,
+					'tag'  => isset( $parts[1] ) && preg_match( '/^h[2-6]$/', $parts[1] ) ? $parts[1] : 'p',
+				);
+			}
+		}
+		return $out;
 	}
 }

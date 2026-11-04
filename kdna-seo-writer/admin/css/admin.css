@@ -409,3 +409,35 @@
 .kdna-sw-warning {
 	color: var(--kdna-sw-bad);
 }
+
+.kdna-sw-help p,
+.kdna-sw-hidden-types p {
+	margin: 4px 0;
+}
+
+.kdna-sw-hidden-types ul {
+	margin: 4px 0 8px 18px;
+	list-style: disc;
+}
+
+.kdna-sw-jet-fields {
+	min-width: 260px;
+	font-family: Menlo, Consolas, monospace;
+	font-size: 12px;
+}
+
+/* ---- Fill empty fields now ---- */
+
+.kdna-sw-fill {
+	border-left: 4px solid var(--kdna-sw-ink);
+}
+
+.kdna-sw-fill-meter {
+	height: 10px;
+	max-width: none;
+}
+
+.kdna-sw-fill-types {
+	margin: 4px 0 8px 18px;
+	list-style: disc;
+}

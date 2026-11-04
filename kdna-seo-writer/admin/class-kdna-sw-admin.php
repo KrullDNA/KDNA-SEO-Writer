@@ -185,9 +185,25 @@ final class KDNA_SeoWriter_Admin {
 	 * @return array<string, mixed>
 	 */
 	private function app_data(): array {
+		$reasons = array(
+			'internal' => __( 'a design building block, not a page', 'kdna-seo-writer' ),
+			'no_pages' => __( 'its items have no public pages', 'kdna-seo-writer' ),
+			'noindex'  => __( 'Yoast keeps it out of search results', 'kdna-seo-writer' ),
+		);
+		$hidden  = array();
+
 		$post_types = array();
 		foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $type ) {
 			if ( 'attachment' === $type->name ) {
+				continue;
+			}
+			$reason = KDNA_SeoWriter_Settings::hidden_reason( 'post_type', $type->name );
+			if ( '' !== $reason ) {
+				$hidden[] = array(
+					'label'  => $type->labels->name,
+					'name'   => $type->name,
+					'reason' => $reasons[ $reason ],
+				);
 				continue;
 			}
 			$post_types[] = array(
@@ -206,6 +222,15 @@ final class KDNA_SeoWriter_Admin {
 			'objects'
 		) as $taxonomy ) {
 			if ( 'post_format' === $taxonomy->name ) {
+				continue;
+			}
+			$reason = KDNA_SeoWriter_Settings::hidden_reason( 'taxonomy', $taxonomy->name );
+			if ( '' !== $reason ) {
+				$hidden[] = array(
+					'label'  => $taxonomy->labels->name,
+					'name'   => $taxonomy->name,
+					'reason' => $reasons[ $reason ],
+				);
 				continue;
 			}
 			$taxonomies[] = array(
@@ -227,6 +252,7 @@ final class KDNA_SeoWriter_Admin {
 			'restPath'     => '/' . KDNA_SW_REST_NAMESPACE,
 			'state'        => KDNA_SeoWriter_Rest_Settings::payload(),
 			'postTypes'    => $post_types,
+			'hiddenTypes'  => $hidden,
 			'taxonomies'   => $taxonomies,
 			'models'       => $models,
 			'integrations' => KDNA_SeoWriter_Plugin::instance()->integrations(),
@@ -236,6 +262,7 @@ final class KDNA_SeoWriter_Admin {
 			'defaultTab'   => KDNA_SeoWriter_Crypto::has_key() ? 'overview' : 'connection',
 			'i18n'         => array(
 				'genericError'      => __( 'Something went wrong. Please try again.', 'kdna-seo-writer' ),
+				'badKey'            => __( 'That does not look like an Anthropic API key. Keys start with sk-ant-. Nothing was saved. If your browser filled the box in by itself, clear it and paste the key from console.anthropic.com.', 'kdna-seo-writer' ),
 				'testError'         => __( 'The test could not run. Please try again.', 'kdna-seo-writer' ),
 				'confirmRemoveKey'  => __( 'Remove the saved API key? The plugin will stop writing until a new key is added.', 'kdna-seo-writer' ),
 				'confirmClearLocks' => __( 'Clear every lock on the site? Fields people have edited can then be worked on again (existing text is still never replaced without approval).', 'kdna-seo-writer' ),
@@ -259,6 +286,20 @@ final class KDNA_SeoWriter_Admin {
 				/* translators: 1: input tokens, 2: output tokens, 3: cached tokens. */
 				'tokens'            => __( '%1$s tokens in, %2$s out, %3$s read from the cache', 'kdna-seo-writer' ),
 				'images'            => __( 'Images', 'kdna-seo-writer' ),
+				/* translators: 1: items, 2: images. */
+				'fillSummary'       => __( '%1$d items with empty fields and %2$d images with no alt text.', 'kdna-seo-writer' ),
+				'fillNothing'       => __( 'Nothing to do: every item is filled, locked, waiting for review or was tried in the last week.', 'kdna-seo-writer' ),
+				/* translators: %s: amount in US dollars. */
+				'fillEstimate'      => __( 'Estimated cost: about US$%s with the chosen model. This is a rough guide: the Overview shows the real spend as it happens.', 'kdna-seo-writer' ),
+				/* translators: 1: items, 2: images, 3: amount in US dollars. */
+				'fillConfirm'       => __( 'Start filling %1$d items and %2$d images now, for about US$%3$s? Only empty fields are filled. Blog posts save straight away, and everything else waits in the Review tab.', 'kdna-seo-writer' ),
+				'fillStarted'       => __( 'Started. Jobs run one at a time in the background, and results appear as they arrive.', 'kdna-seo-writer' ),
+				'fillStopConfirm'   => __( 'Stop the run? Jobs not yet started are cancelled. Anything already saved or waiting in Review stays.', 'kdna-seo-writer' ),
+				'fillStopped'       => __( 'Stopped.', 'kdna-seo-writer' ),
+				/* translators: 1: jobs done, 2: jobs in total. */
+				'fillProgress'      => __( '%1$d of %2$d done', 'kdna-seo-writer' ),
+				/* translators: 1: jobs, 2: date and time. */
+				'fillFinished'      => __( 'The last run finished: %1$d jobs, started %2$s. Check the Review tab for anything waiting.', 'kdna-seo-writer' ),
 				'copied'            => __( 'Copied', 'kdna-seo-writer' ),
 				'statuses'          => array(
 					'good' => __( 'Good', 'kdna-seo-writer' ),

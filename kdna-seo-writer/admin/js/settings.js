@@ -89,6 +89,7 @@
 				models: data.models || [],
 				postTypes: data.postTypes || [],
 				taxonomies: data.taxonomies || [],
+				hiddenTypes: data.hiddenTypes || [],
 				integrations: data.integrations || {},
 				starterRules: data.starterRules || [],
 				busy: false,
@@ -109,6 +110,7 @@
 					polls: 0,
 				},
 				overview: { data: null, loading: false, message: '' },
+				fill: { status: {}, preview: null, problem: '', loading: false, polling: false },
 				keyphrases: { items: [], loading: false, loaded: false, search: '', duplicatesOnly: false, open: '', reports: {} },
 
 				/**
@@ -523,6 +525,7 @@
 						.then( ( response ) => {
 							this.overview.data = response;
 							this.updateBadge( response.queue );
+							this.loadFill();
 						} )
 						.catch( ( error ) => {
 							this.notice = { text: ( error && error.message ) || i18n.genericError, ok: false };
@@ -530,6 +533,132 @@
 						.finally( () => {
 							this.overview.loading = false;
 						} );
+				},
+
+				/* ---------------- Fill empty fields now ---------------- */
+
+				/**
+				 * Loads the run's progress, and keeps checking while it runs.
+				 *
+				 * @return {Promise} Done.
+				 */
+				loadFill: function () {
+					return window.wp.apiFetch( { path: data.restPath + '/fill' } ).then( ( response ) => {
+						var wasRunning = this.fill.status.running;
+						this.fill.status = response.status || {};
+						this.fill.problem = response.problem || '';
+						if ( wasRunning && ! this.fill.status.running ) {
+							this.loadOverview();
+						}
+						this.pollFill();
+					} ).catch( () => {} );
+				},
+
+				/**
+				 * Checks progress every 15 seconds while a run is going and the
+				 * Overview is open.
+				 */
+				pollFill: function () {
+					if ( ! this.fill.status.running || 'overview' !== this.tab || this.fill.polling ) {
+						return;
+					}
+					this.fill.polling = true;
+					window.setTimeout( () => {
+						this.fill.polling = false;
+						this.loadFill();
+					}, 15000 );
+				},
+
+				/**
+				 * Counts what a run would cover and estimates the cost.
+				 */
+				loadFillPreview: function () {
+					this.fill.loading = true;
+					window.wp.apiFetch( { path: data.restPath + '/fill?preview=1' } )
+						.then( ( response ) => {
+							this.fill.preview = response.preview || null;
+							this.fill.status = response.status || {};
+							this.fill.problem = response.problem || '';
+						} )
+						.catch( ( error ) => {
+							this.notice = { text: ( error && error.message ) || i18n.genericError, ok: false };
+						} )
+						.finally( () => {
+							this.fill.loading = false;
+						} );
+				},
+
+				/**
+				 * Starts the run, after checking with the user.
+				 */
+				startFill: function () {
+					var p = this.fill.preview;
+					// eslint-disable-next-line no-alert
+					if ( ! p || ! window.confirm( i18n.fillConfirm.replace( '%1$d', p.items ).replace( '%2$d', p.images ).replace( '%3$s', p.estimate.toFixed( 2 ) ) ) ) {
+						return;
+					}
+					this.busy = true;
+					window.wp.apiFetch( { path: data.restPath + '/fill', method: 'POST', data: { action: 'start' } } )
+						.then( ( response ) => {
+							this.fill.status = response.status || {};
+							this.fill.preview = null;
+							this.notice = { text: i18n.fillStarted, ok: true };
+							this.pollFill();
+						} )
+						.catch( ( error ) => {
+							this.notice = { text: ( error && error.message ) || i18n.genericError, ok: false };
+						} )
+						.finally( () => {
+							this.busy = false;
+						} );
+				},
+
+				/**
+				 * Stops the run, after checking with the user.
+				 */
+				stopFill: function () {
+					// eslint-disable-next-line no-alert
+					if ( ! window.confirm( i18n.fillStopConfirm ) ) {
+						return;
+					}
+					this.busy = true;
+					window.wp.apiFetch( { path: data.restPath + '/fill', method: 'POST', data: { action: 'stop' } } )
+						.then( ( response ) => {
+							this.fill.status = response.status || {};
+							this.notice = { text: i18n.fillStopped, ok: true };
+							this.loadOverview();
+						} )
+						.catch( ( error ) => {
+							this.notice = { text: ( error && error.message ) || i18n.genericError, ok: false };
+						} )
+						.finally( () => {
+							this.busy = false;
+						} );
+				},
+
+				fillPercent: function () {
+					var s = this.fill.status;
+					return s.total ? Math.round( ( s.done / s.total ) * 100 ) : 0;
+				},
+
+				fillProgress: function () {
+					return i18n.fillProgress.replace( '%1$d', this.fill.status.done || 0 ).replace( '%2$d', this.fill.status.total || 0 );
+				},
+
+				fillFinished: function () {
+					return i18n.fillFinished.replace( '%1$d', this.fill.status.total || 0 ).replace( '%2$s', this.fill.status.started || '' );
+				},
+
+				fillSummary: function () {
+					var p = this.fill.preview;
+					if ( ! p || ! ( p.items + p.images ) ) {
+						return i18n.fillNothing;
+					}
+					return i18n.fillSummary.replace( '%1$d', p.items ).replace( '%2$d', p.images );
+				},
+
+				fillEstimate: function () {
+					return i18n.fillEstimate.replace( '%s', this.fill.preview.estimate.toFixed( 2 ) );
 				},
 
 				/**
@@ -702,8 +831,17 @@
 				 */
 				save: function ( extra ) {
 					var body = Object.assign( { settings: this.settings }, extra || {} );
-					if ( this.apiKey.trim() !== '' ) {
-						body.api_key = this.apiKey.trim();
+					var typedKey = this.apiKey.trim();
+
+					// Only the Connection tab sends a key, and only something that
+					// looks like one. Browsers and password managers sometimes fill
+					// the key box with a saved login password, even while another
+					// tab is open, and that must never replace the real key.
+					if ( 'connection' === this.tab && typedKey.indexOf( 'sk-ant-' ) === 0 ) {
+						body.api_key = typedKey;
+					} else if ( 'connection' === this.tab && typedKey !== '' ) {
+						this.notice = { text: i18n.badKey, ok: false };
+						return Promise.resolve( false );
 					}
 
 					this.busy = true;

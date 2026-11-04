@@ -83,6 +83,18 @@ final class KDNA_SeoWriter_Rest_Settings {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function save( WP_REST_Request $request ) {
+		// The key is checked before anything is saved, so a rejected key
+		// never leaves the other settings half saved.
+		$api_key = $request->get_param( 'api_key' );
+		$api_key = is_string( $api_key ) ? trim( sanitize_text_field( $api_key ) ) : '';
+		if ( '' !== $api_key && ! preg_match( '/^sk-ant-[A-Za-z0-9_\-]{20,300}$/', $api_key ) ) {
+			return new WP_Error(
+				'kdna_sw_bad_key',
+				__( 'That does not look like an Anthropic API key. Keys start with sk-ant-. Nothing was saved.', 'kdna-seo-writer' ),
+				array( 'status' => 400 )
+			);
+		}
+
 		$settings = $request->get_param( 'settings' );
 		if ( is_array( $settings ) ) {
 			KDNA_SeoWriter_Settings::save( $settings );
@@ -103,23 +115,12 @@ final class KDNA_SeoWriter_Rest_Settings {
 			KDNA_SeoWriter_Crypto::delete_key();
 		}
 
-		$api_key = $request->get_param( 'api_key' );
-		if ( is_string( $api_key ) && '' !== trim( $api_key ) ) {
-			$api_key = trim( sanitize_text_field( $api_key ) );
-			if ( ! preg_match( '/^[A-Za-z0-9_\-]{20,300}$/', $api_key ) ) {
-				return new WP_Error(
-					'kdna_sw_bad_key',
-					__( 'That does not look like an Anthropic API key. Keys start with sk-ant- and contain only letters, numbers, dashes and underscores.', 'kdna-seo-writer' ),
-					array( 'status' => 400 )
-				);
-			}
-			if ( ! KDNA_SeoWriter_Crypto::save_key( $api_key ) ) {
-				return new WP_Error(
-					'kdna_sw_key_not_saved',
-					__( 'The API key could not be saved securely on this server. Please ask KDNA to check the server\'s PHP sodium extension.', 'kdna-seo-writer' ),
-					array( 'status' => 500 )
-				);
-			}
+		if ( '' !== $api_key && ! KDNA_SeoWriter_Crypto::save_key( $api_key ) ) {
+			return new WP_Error(
+				'kdna_sw_key_not_saved',
+				__( 'The API key could not be saved securely on this server. Please ask KDNA to check the server\'s PHP sodium extension.', 'kdna-seo-writer' ),
+				array( 'status' => 500 )
+			);
 		}
 
 		$payload            = self::payload();
