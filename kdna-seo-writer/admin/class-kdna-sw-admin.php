@@ -286,6 +286,20 @@ final class KDNA_SeoWriter_Admin {
 				/* translators: 1: input tokens, 2: output tokens, 3: cached tokens. */
 				'tokens'            => __( '%1$s tokens in, %2$s out, %3$s read from the cache', 'kdna-seo-writer' ),
 				'images'            => __( 'Images', 'kdna-seo-writer' ),
+				/* translators: 1: items, 2: images. */
+				'fillSummary'       => __( '%1$d items with empty fields and %2$d images with no alt text.', 'kdna-seo-writer' ),
+				'fillNothing'       => __( 'Nothing to do: every item is filled, locked, waiting for review or was tried in the last week.', 'kdna-seo-writer' ),
+				/* translators: %s: amount in US dollars. */
+				'fillEstimate'      => __( 'Estimated cost: about US$%s with the chosen model. This is a rough guide: the Overview shows the real spend as it happens.', 'kdna-seo-writer' ),
+				/* translators: 1: items, 2: images, 3: amount in US dollars. */
+				'fillConfirm'       => __( 'Start filling %1$d items and %2$d images now, for about US$%3$s? Only empty fields are filled. Blog posts save straight away, and everything else waits in the Review tab.', 'kdna-seo-writer' ),
+				'fillStarted'       => __( 'Started. Jobs run one at a time in the background, and results appear as they arrive.', 'kdna-seo-writer' ),
+				'fillStopConfirm'   => __( 'Stop the run? Jobs not yet started are cancelled. Anything already saved or waiting in Review stays.', 'kdna-seo-writer' ),
+				'fillStopped'       => __( 'Stopped.', 'kdna-seo-writer' ),
+				/* translators: 1: jobs done, 2: jobs in total. */
+				'fillProgress'      => __( '%1$d of %2$d done', 'kdna-seo-writer' ),
+				/* translators: 1: jobs, 2: date and time. */
+				'fillFinished'      => __( 'The last run finished: %1$d jobs, started %2$s. Check the Review tab for anything waiting.', 'kdna-seo-writer' ),
 				'copied'            => __( 'Copied', 'kdna-seo-writer' ),
 				'statuses'          => array(
 					'good' => __( 'Good', 'kdna-seo-writer' ),

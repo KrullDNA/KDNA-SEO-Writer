@@ -335,9 +335,16 @@
 		}
 
 		if ( generate ) {
+			var before = 'classic' === cfg.mode ? classicSaveFirst() : Promise.resolve( '' );
+
 			generate.disabled = true;
-			setMessage( box, i18n.working );
-			act( item, 'generate' ).then( function ( data ) {
+			before.then( function ( saving ) {
+				if ( 'update' === saving ) {
+					throw new Error( i18n.updateFirst );
+				}
+				setMessage( box, i18n.working );
+				return act( item, 'generate' );
+			} ).then( function ( data ) {
 				renderBox( box, data, data.message );
 				pollBox( box );
 			} ).catch( function ( error ) {
@@ -354,6 +361,49 @@
 			} );
 		}
 	} );
+
+	/**
+	 * In the classic editor, saves a new or changed draft before Generate now,
+	 * using WordPress's own autosave (which saves drafts in place), so Claude
+	 * reads what is on screen.
+	 *
+	 * A published post with unsaved changes is not saved here: WordPress's
+	 * autosave only keeps a backup copy of a live post, so the person is asked
+	 * to click Update first.
+	 *
+	 * @return {Promise<string>} '' when ready, or 'update' when Update is needed first.
+	 */
+	function classicSaveFirst() {
+		var autosave = window.wp && window.wp.autosave && window.wp.autosave.server;
+		var status = document.getElementById( 'original_post_status' );
+		var changed = autosave && typeof autosave.postChanged === 'function' ? autosave.postChanged() : false;
+		var draft = status && [ 'auto-draft', 'draft', 'pending' ].indexOf( status.value ) !== -1;
+
+		if ( ! changed && ! ( status && 'auto-draft' === status.value ) ) {
+			return Promise.resolve( '' );
+		}
+		if ( ! draft ) {
+			return Promise.resolve( 'update' );
+		}
+		if ( ! autosave || typeof autosave.triggerSave !== 'function' || ! window.jQuery ) {
+			return Promise.resolve( '' );
+		}
+
+		document.querySelectorAll( '.kdna-sw-box' ).forEach( function ( box ) {
+			setMessage( box, i18n.savingFirst );
+		} );
+
+		return new Promise( function ( resolve ) {
+			var done = function () {
+				window.jQuery( document ).off( 'after-autosave.kdnaSw' );
+				window.clearTimeout( timer );
+				resolve( '' );
+			};
+			var timer = window.setTimeout( done, 15000 );
+			window.jQuery( document ).on( 'after-autosave.kdnaSw', done );
+			autosave.triggerSave();
+		} );
+	}
 
 	/**
 	 * Shows a message in a box without redrawing the field list.
@@ -493,9 +543,22 @@
 		}, [ post.id ] );
 
 		function generate() {
+			var editor = wp.data.select( 'core/editor' );
+			var needsSave = editor.isEditedPostNew() || editor.isEditedPostDirty();
+
+			// A new or edited post is saved first (as a draft if it is new), so
+			// Claude reads what is on screen. Published posts save as normal.
+			var saved = needsSave ? Promise.resolve( wp.data.dispatch( 'core/editor' ).savePost() ) : Promise.resolve();
+
 			setBusy( true );
-			setMessage( i18n.working );
-			act( item, 'generate' ).then( function ( next ) {
+			setMessage( needsSave ? i18n.savingFirst : i18n.working );
+			saved.then( function () {
+				if ( wp.data.select( 'core/editor' ).didPostSaveRequestFail() ) {
+					throw new Error( i18n.saveFailed );
+				}
+				setMessage( i18n.working );
+				return act( item, 'generate' );
+			} ).then( function ( next ) {
 				setData( next );
 				setMessage( next.message || i18n.queued );
 				polls.current = 0;
@@ -546,11 +609,11 @@
 				children.push( el( 'p', { className: 'kdna-sw-msg', key: 'problem' }, data.problem ) );
 			} else {
 				children.push( el( 'p', { key: 'button' },
-					el( Button, { variant: 'secondary', onClick: generate, disabled: busy || data.job || post.isNew, isBusy: busy || data.job }, i18n.generate )
+					el( Button, { variant: 'secondary', onClick: generate, disabled: busy || data.job, isBusy: busy || data.job }, i18n.generate )
 				) );
 				var text = message || ( data.job ? i18n.queued : ( data.last && data.last.message ) || '' );
-				if ( post.isNew ) {
-					text = i18n.saveFirst;
+				if ( post.isNew && ! text ) {
+					text = i18n.savesDraft;
 				}
 				children.push( el( 'p', { className: 'kdna-sw-msg', role: 'status', 'aria-live': 'polite', key: 'msg' }, text ) );
 				if ( data.fields && data.fields.some( function ( field ) {

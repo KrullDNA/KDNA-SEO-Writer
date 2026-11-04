@@ -179,17 +179,18 @@ final class KDNA_SeoWriter_Alt_Text {
 	 * @param int    $context_id Page the image is on, or 0.
 	 * @param string $mode       auto, manual or regenerate.
 	 * @param int    $delay      Seconds from now.
+	 * @param string $group      Action Scheduler group. Fill empty fields now uses its own.
 	 * @return bool
 	 */
-	public static function queue( int $image_id, int $context_id, string $mode, int $delay = 0 ): bool {
+	public static function queue( int $image_id, int $context_id, string $mode, int $delay = 0, string $group = KDNA_SeoWriter_Scheduler::GROUP ): bool {
 		if ( ! KDNA_SeoWriter_Scheduler::available() ) {
 			return false;
 		}
 		$args = array( $image_id, $context_id, $mode );
-		if ( as_has_scheduled_action( self::JOB, $args, KDNA_SeoWriter_Scheduler::GROUP ) ) {
+		if ( as_has_scheduled_action( self::JOB, $args, $group ) ) {
 			return true;
 		}
-		as_schedule_single_action( time() + max( 0, $delay ), self::JOB, $args, KDNA_SeoWriter_Scheduler::GROUP );
+		as_schedule_single_action( time() + max( 0, $delay ), self::JOB, $args, $group );
 		KDNA_SeoWriter_State::set_job( 'post', $image_id, true );
 		return true;
 	}

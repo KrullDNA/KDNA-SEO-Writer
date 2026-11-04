@@ -39,6 +39,7 @@ if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $kdna_sw_as_table ) 
 delete_option( 'kdna_sw_settings' );
 delete_option( 'kdna_sw_api_key' );
 delete_option( 'kdna_sw_db_version' );
+delete_option( 'kdna_sw_fill' );
 delete_transient( 'kdna_sw_queue_count' );
 delete_transient( 'kdna_sw_keyphrases' );
 delete_transient( 'kdna_sw_sweep_check' );

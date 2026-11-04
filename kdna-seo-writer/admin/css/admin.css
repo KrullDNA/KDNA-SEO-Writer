@@ -425,3 +425,19 @@
 	font-family: Menlo, Consolas, monospace;
 	font-size: 12px;
 }
+
+/* ---- Fill empty fields now ---- */
+
+.kdna-sw-fill {
+	border-left: 4px solid var(--kdna-sw-ink);
+}
+
+.kdna-sw-fill-meter {
+	height: 10px;
+	max-width: none;
+}
+
+.kdna-sw-fill-types {
+	margin: 4px 0 8px 18px;
+	list-style: disc;
+}
