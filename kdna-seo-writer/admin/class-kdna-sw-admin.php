@@ -302,6 +302,10 @@ final class KDNA_SeoWriter_Admin {
 				'fillFinished'      => __( 'The last run finished: %1$d jobs, started %2$s. Check the Review tab for anything waiting.', 'kdna-seo-writer' ),
 				/* translators: 1: pass number, 2: most passes. */
 				'fillPass'          => __( 'Pass %1$d of up to %2$d: going back for anything the earlier pass could not finish.', 'kdna-seo-writer' ),
+				/* translators: %d: number of items. */
+				'fillLeftOut'       => __( '%d items with empty fields are left out of this run. See why', 'kdna-seo-writer' ),
+				/* translators: %d: number of jobs. */
+				'fillFailed'        => __( '%d background jobs failed in the last day. Open Tools, Scheduled Actions, Failed and search for kdna_sw to see why.', 'kdna-seo-writer' ),
 				'fillChecking'      => __( 'Checking whether anything was missed…', 'kdna-seo-writer' ),
 				/* translators: %d: number of items and images. */
 				'fillLeft'          => __( '%d items or images still could not be done after every pass. The nightly sweep keeps trying them. If this number stays the same, look in Tools, Scheduled Actions for failed kdna_sw jobs, or open one of the items and use Generate now to see the reason.', 'kdna-seo-writer' ),

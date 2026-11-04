@@ -168,9 +168,16 @@ final class KDNA_SeoWriter_Scheduler {
 		$object_type = 'term' === $object_type ? 'term' : 'post';
 		$id          = (int) $id;
 		$subtype     = (string) $subtype;
-		$mode        = in_array( $mode, array( 'auto', 'manual', 'suggest', 'regenerate' ), true ) ? $mode : 'auto';
+		$mode        = in_array( $mode, array( 'auto', 'manual', 'suggest', 'regenerate', 'short' ), true ) ? $mode : 'auto';
 
 		self::give_job_time();
+
+		// Write anyway: Generate now for a page with less text than the
+		// Minimum words setting, asked for by a person on the edit screen.
+		if ( 'short' === $mode ) {
+			$mode                                       = 'manual';
+			KDNA_SeoWriter_Reader::$min_words_override = 0;
+		}
 
 		if ( 'auto' === $mode ) {
 			if ( KDNA_SeoWriter_Usage::limit_reached() ) {
@@ -195,6 +202,8 @@ final class KDNA_SeoWriter_Scheduler {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'KDNA SEO Writer: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			}
+		} finally {
+			KDNA_SeoWriter_Reader::$min_words_override = -1;
 		}
 	}
 
@@ -398,10 +407,12 @@ final class KDNA_SeoWriter_Scheduler {
 	 * with at least one empty field, not waiting for review, and not tried in
 	 * the last week. Items never tried come first.
 	 *
-	 * @param int $limit Most items to return.
+	 * @param int      $limit  Most items to return.
+	 * @param int|null $cutoff Leave out items tried at or after this time.
+	 *                         Defaults to a week ago.
 	 * @return array<int, array{type: string, id: int, subtype: string}>
 	 */
-	public static function sweep_candidates( int $limit ): array {
+	public static function sweep_candidates( int $limit, ?int $cutoff = null ): array {
 		global $wpdb;
 
 		if ( $limit < 1 ) {
@@ -411,14 +422,9 @@ final class KDNA_SeoWriter_Scheduler {
 		$out    = array();
 		$fields = self::enabled_meta_keys();
 		$tables = KDNA_SeoWriter_Install::tables();
-		$cutoff = time() - self::RETRY_AFTER;
+		$cutoff = $cutoff ?? time() - self::RETRY_AFTER;
 
-		$types = array_values(
-			array_filter(
-				get_post_types( array( 'public' => true ) ),
-				static fn( $type ) => 'attachment' !== $type && self::enabled( 'post', $type )
-			)
-		);
+		$types = self::sweep_post_types();
 
 		if ( $types && $fields ) {
 			$empty_checks = array();
@@ -447,6 +453,11 @@ final class KDNA_SeoWriter_Scheduler {
 			// phpcs:enable
 
 			foreach ( (array) $rows as $row ) {
+				// The query cannot see locks: an item whose only empty fields
+				// were emptied or edited by a person has nothing to do.
+				if ( ! self::needs_work( 'post', (int) $row['ID'], (string) $row['post_type'] ) ) {
+					continue;
+				}
 				$out[] = array(
 					'type'    => 'post',
 					'id'      => (int) $row['ID'],
@@ -471,20 +482,9 @@ final class KDNA_SeoWriter_Scheduler {
 	 * @return array<int, array{type: string, id: int, subtype: string}>
 	 */
 	private static function term_candidates( int $limit, int $cutoff ): array {
-		$out        = array();
-		$taxonomies = array_values(
-			array_filter(
-				get_taxonomies(
-					array(
-						'public'  => true,
-						'show_ui' => true,
-					)
-				),
-				static fn( $taxonomy ) => 'post_format' !== $taxonomy && self::enabled( 'term', $taxonomy )
-			)
-		);
+		$out = array();
 
-		foreach ( $taxonomies as $taxonomy ) {
+		foreach ( self::sweep_taxonomies() as $taxonomy ) {
 			$terms = get_terms(
 				array(
 					'taxonomy'   => $taxonomy,
@@ -516,6 +516,40 @@ final class KDNA_SeoWriter_Scheduler {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * Returns the taxonomies the sweep covers: public, shown in wp-admin and
+	 * not Off in the Content tab.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function sweep_taxonomies(): array {
+		return array_values(
+			array_filter(
+				get_taxonomies(
+					array(
+						'public'  => true,
+						'show_ui' => true,
+					)
+				),
+				static fn( $taxonomy ) => 'post_format' !== $taxonomy && self::enabled( 'term', $taxonomy )
+			)
+		);
+	}
+
+	/**
+	 * Returns the post types the sweep covers: public and not Off.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function sweep_post_types(): array {
+		return array_values(
+			array_filter(
+				get_post_types( array( 'public' => true ) ),
+				static fn( $type ) => 'attachment' !== $type && self::enabled( 'post', $type )
+			)
+		);
 	}
 
 	/**
@@ -617,7 +651,7 @@ final class KDNA_SeoWriter_Scheduler {
 	 *
 	 * @return array<int, string>
 	 */
-	private static function enabled_meta_keys(): array {
+	public static function enabled_meta_keys(): array {
 		$enabled = (array) KDNA_SeoWriter_Settings::get( 'content', 'fields' );
 		$keys    = array();
 		foreach ( KDNA_SeoWriter_State::GROUPS as $group => $fields ) {

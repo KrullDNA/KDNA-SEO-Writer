@@ -63,6 +63,26 @@ $kdna_sw_problem_lists = array(
 								</ul>
 								<p x-show="fill.preview.items + fill.preview.images > 0" x-text="fillEstimate()"></p>
 								<p class="kdna-sw-warning" x-show="fill.preview.over_limit"><?php esc_html_e( 'This is likely to go past this month\'s spend limit. Jobs pause when the limit is reached, and carry on next month or when the limit is raised.', 'kdna-seo-writer' ); ?></p>
+								<p class="kdna-sw-warning" x-show="fill.preview.health && fill.preview.health.stalled"><?php esc_html_e( 'Background jobs are due but none has run for over 20 minutes. WordPress runs them when the site has visitors or someone is in wp-admin. If this stays, open Tools, Scheduled Actions, Pending, search for kdna_sw and click Run on one. If that works but they still do not run by themselves, ask your host whether WP-Cron or loopback requests are blocked.', 'kdna-seo-writer' ); ?></p>
+								<p class="kdna-sw-warning" x-show="fill.preview.health && fill.preview.health.failed > 0" x-text="fillFailed()"></p>
+								<p><label><input type="checkbox" x-model="fill.retry" @change="loadFillPreview()"> <?php esc_html_e( 'Also try again items tried in the last week', 'kdna-seo-writer' ); ?></label><br><span class="description"><?php esc_html_e( 'Usually anything tried is left for a week, so pages that keep failing do not cost money every night. Tick this after adding text to pages, or after updating the plugin. Pages that are still too short are skipped again at no cost.', 'kdna-seo-writer' ); ?></span></p>
+								<template x-if="fill.preview.left_out && fill.preview.left_out.count > 0">
+									<div class="kdna-sw-fill-left">
+										<p><button type="button" class="button-link" @click="fill.showLeft = !fill.showLeft" :aria-expanded="fill.showLeft ? 'true' : 'false'" x-text="fillLeftTitle()"></button></p>
+										<table class="widefat striped" x-show="fill.showLeft">
+											<thead><tr><th><?php esc_html_e( 'Item', 'kdna-seo-writer' ); ?></th><th><?php esc_html_e( 'Type', 'kdna-seo-writer' ); ?></th><th><?php esc_html_e( 'Why it is left out', 'kdna-seo-writer' ); ?></th></tr></thead>
+											<tbody>
+												<template x-for="row in fill.preview.left_out.rows" :key="row.link + row.title">
+													<tr>
+														<td><a :href="row.link" x-text="row.title"></a></td>
+														<td x-text="row.type"></td>
+														<td><span x-text="row.reason"></span> <span class="description" x-show="'short' === row.code"><?php esc_html_e( 'Add more text, use Write anyway in its SEO Writer box, or lower Minimum words in the Content tab.', 'kdna-seo-writer' ); ?></span></td>
+													</tr>
+												</template>
+											</tbody>
+										</table>
+									</div>
+								</template>
 								<p class="description" x-show="fill.preview.capped"><?php esc_html_e( 'Each pass covers up to 2,000 items and 2,000 images. The run carries on with the rest in its later passes.', 'kdna-seo-writer' ); ?></p>
 								<p>
 									<button type="button" class="button button-primary" @click="startFill()" :disabled="busy || !!fill.problem || !(fill.preview.items + fill.preview.images)"><?php esc_html_e( 'Fill empty fields now', 'kdna-seo-writer' ); ?></button>

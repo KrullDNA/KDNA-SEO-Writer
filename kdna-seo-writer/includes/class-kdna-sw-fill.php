@@ -83,11 +83,13 @@ final class KDNA_SeoWriter_Fill {
 	/**
 	 * Returns what a run would cover, and roughly what it would cost.
 	 *
-	 * @return array{items: int, images: int, by_type: array<int, array{label: string, count: int}>, estimate: float, over_limit: bool, capped: bool}
+	 * @param bool $retry Also include items and images tried in the last week.
+	 * @return array<string, mixed>
 	 */
-	public static function preview(): array {
-		$items  = KDNA_SeoWriter_Scheduler::sweep_candidates( self::LIMIT );
-		$images = KDNA_SeoWriter_Alt_Text::sweep_candidates( self::LIMIT );
+	public static function preview( bool $retry = false ): array {
+		$cutoff = $retry ? time() : null;
+		$items  = KDNA_SeoWriter_Scheduler::sweep_candidates( self::LIMIT, $cutoff );
+		$images = KDNA_SeoWriter_Alt_Text::sweep_candidates( self::LIMIT, $cutoff );
 
 		$types = array();
 		foreach ( $items as $item ) {
@@ -118,15 +120,19 @@ final class KDNA_SeoWriter_Fill {
 			'estimate'   => $estimate > 0 ? ceil( $estimate * 100 ) / 100 : 0.0,
 			'over_limit' => $limit > 0 && $spent + $estimate > $limit,
 			'capped'     => count( $items ) >= self::LIMIT || count( $images ) >= self::LIMIT,
+			'retry'      => $retry,
+			'left_out'   => self::left_out( $items, $cutoff ),
+			'health'     => self::job_health(),
 		);
 	}
 
 	/**
 	 * Queues the run.
 	 *
+	 * @param bool $retry Also include items and images tried in the last week.
 	 * @return array<string, mixed>|WP_Error The run's status, or an error.
 	 */
-	public static function start() {
+	public static function start( bool $retry = false ) {
 		$problem = self::cannot_start();
 		if ( '' !== $problem ) {
 			return new WP_Error( 'kdna_sw_fill_blocked', $problem, array( 'status' => 400 ) );
@@ -135,12 +141,18 @@ final class KDNA_SeoWriter_Fill {
 			return new WP_Error( 'kdna_sw_fill_running', __( 'A run is already going. Wait for it to finish, or stop it first.', 'kdna-seo-writer' ), array( 'status' => 400 ) );
 		}
 
-		$pass = self::queue_pass();
+		$started = time();
+		$pass    = self::queue_pass( $retry ? $started : null );
+
+		if ( 0 === $pass['total'] ) {
+			return new WP_Error( 'kdna_sw_fill_nothing', __( 'Nothing was started: every item and image is filled, already queued, waiting for review or was tried recently. The "Left out" list under Check what needs doing says why for each one.', 'kdna-seo-writer' ), array( 'status' => 400 ) );
+		}
 
 		update_option(
 			self::OPTION,
 			array(
-				'started' => time(),
+				'started' => $started,
+				'retry'   => $retry,
 				'total'   => $pass['total'],
 				'items'   => $pass['items'],
 				'images'  => $pass['images'],
@@ -162,14 +174,16 @@ final class KDNA_SeoWriter_Fill {
 	 * Queues one pass: every item with empty fields and every image with no
 	 * alt text that has not been tried recently and is not already booked.
 	 *
+	 * @param int|null $cutoff Leave out anything tried at or after this time
+	 *                         (null for the usual week).
 	 * @return array{total: int, items: int, images: int}
 	 */
-	private static function queue_pass(): array {
+	private static function queue_pass( ?int $cutoff = null ): array {
 		$queued = 0;
 		$items  = 0;
 		$images = 0;
 
-		foreach ( KDNA_SeoWriter_Scheduler::sweep_candidates( self::LIMIT ) as $item ) {
+		foreach ( KDNA_SeoWriter_Scheduler::sweep_candidates( self::LIMIT, $cutoff ) as $item ) {
 			if ( self::booked( KDNA_SeoWriter_Scheduler::JOB, array( $item['type'], $item['id'], $item['subtype'], 'auto' ) ) ) {
 				continue;
 			}
@@ -180,7 +194,7 @@ final class KDNA_SeoWriter_Fill {
 		}
 
 		if ( KDNA_SeoWriter_Alt_Text::enabled() ) {
-			foreach ( KDNA_SeoWriter_Alt_Text::sweep_candidates( self::LIMIT ) as $image ) {
+			foreach ( KDNA_SeoWriter_Alt_Text::sweep_candidates( self::LIMIT, $cutoff ) as $image ) {
 				if ( self::booked( KDNA_SeoWriter_Alt_Text::JOB, array( $image['id'], $image['context'], 'auto' ) ) ) {
 					continue;
 				}
@@ -245,7 +259,8 @@ final class KDNA_SeoWriter_Fill {
 
 		$pass = (int) ( $run['pass'] ?? 1 );
 		if ( $pass < self::PASSES && '' === self::cannot_start() ) {
-			$next = self::queue_pass();
+			// A retry run goes back for anything not tried since it started.
+			$next = self::queue_pass( ! empty( $run['retry'] ) ? (int) $run['started'] : null );
 			if ( $next['total'] > 0 ) {
 				$run['pass']    = $pass + 1;
 				$run['total']   = (int) ( $run['total'] ?? 0 ) + $next['total'];
@@ -335,6 +350,220 @@ final class KDNA_SeoWriter_Fill {
 	}
 
 	/**
+	 * Lists items with empty fields that a run would leave out, and why.
+	 *
+	 * The Coverage table counts every published item, so this explains the
+	 * difference: tried recently (with the result, such as "Not enough
+	 * content"), waiting in Review, already queued, locked by a person, or a
+	 * category with no posts.
+	 *
+	 * @param array<int, array{type: string, id: int, subtype: string}> $picked Items the run would cover.
+	 * @param int|null                                                  $cutoff Tried at or after this counts as recent.
+	 * @return array{count: int, rows: array<int, array<string, mixed>>}
+	 */
+	public static function left_out( array $picked, ?int $cutoff = null ): array {
+		global $wpdb;
+
+		$cutoff = $cutoff ?? time() - 7 * DAY_IN_SECONDS;
+		$skip   = array();
+		foreach ( $picked as $item ) {
+			$skip[ $item['type'] . ':' . $item['id'] ] = true;
+		}
+
+		$rows   = array();
+		$count  = 0;
+		$fields = KDNA_SeoWriter_Scheduler::enabled_meta_keys();
+		$types  = KDNA_SeoWriter_Scheduler::sweep_post_types();
+
+		if ( $types && $fields ) {
+			$checks = array();
+			foreach ( $fields as $key ) {
+				$checks[] = $wpdb->prepare( "NOT EXISTS ( SELECT 1 FROM {$wpdb->postmeta} f WHERE f.post_id = p.ID AND f.meta_key = %s AND f.meta_value <> '' )", $key );
+			}
+			$type_list = implode( ',', array_map( static fn( $type ) => $wpdb->prepare( '%s', $type ), $types ) );
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- Admin check; every part is prepared above.
+			$found = $wpdb->get_results(
+				"SELECT p.ID, p.post_type FROM {$wpdb->posts} p
+				WHERE p.post_status = 'publish' AND p.post_password = '' AND p.post_type IN ({$type_list})
+				AND ( " . implode( ' OR ', $checks ) . ' )
+				ORDER BY p.post_type ASC, p.ID ASC LIMIT 1000',
+				ARRAY_A
+			);
+			// phpcs:enable
+			foreach ( (array) $found as $row ) {
+				$id = (int) $row['ID'];
+				if ( isset( $skip[ 'post:' . $id ] ) ) {
+					continue;
+				}
+				$why = self::reason( 'post', $id, (string) $row['post_type'], $cutoff );
+				if ( $why ) {
+					++$count;
+					if ( count( $rows ) < 200 ) {
+						$object = get_post_type_object( (string) $row['post_type'] );
+						$title  = get_the_title( $id );
+						$rows[] = array_merge(
+							$why,
+							array(
+								'title' => '' !== $title ? $title : '#' . $id,
+								'type'  => $object && isset( $object->labels->singular_name ) ? (string) $object->labels->singular_name : (string) $row['post_type'],
+								'link'  => (string) get_edit_post_link( $id, 'raw' ),
+							)
+						);
+					}
+				}
+			}
+		}
+
+		foreach ( KDNA_SeoWriter_Scheduler::sweep_taxonomies() as $taxonomy ) {
+			$terms = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'hide_empty' => false,
+					'number'     => 500,
+				)
+			);
+			if ( is_wp_error( $terms ) ) {
+				continue;
+			}
+			$object = get_taxonomy( $taxonomy );
+			foreach ( $terms as $term ) {
+				$id = (int) $term->term_id;
+				if ( isset( $skip[ 'term:' . $id ] ) ) {
+					continue;
+				}
+				$why = self::reason( 'term', $id, $taxonomy, $cutoff, (int) $term->count );
+				if ( $why ) {
+					++$count;
+					if ( count( $rows ) < 200 ) {
+						$rows[] = array_merge(
+							$why,
+							array(
+								'title' => (string) $term->name,
+								'type'  => $object && isset( $object->labels->singular_name ) ? (string) $object->labels->singular_name : $taxonomy,
+								'link'  => (string) get_edit_term_link( $id, $taxonomy ),
+							)
+						);
+					}
+				}
+			}
+		}
+
+		return array(
+			'count' => $count,
+			'rows'  => $rows,
+		);
+	}
+
+	/**
+	 * Works out why one item with empty fields is not in the run.
+	 *
+	 * @param string   $object_type Either post or term.
+	 * @param int      $id          Post or term ID.
+	 * @param string   $subtype     Post type or taxonomy.
+	 * @param int      $cutoff      Tried at or after this counts as recent.
+	 * @param int|null $posts       For terms, how many posts they have.
+	 * @return array{code: string, reason: string}|null Null when the item has no empty field.
+	 */
+	private static function reason( string $object_type, int $id, string $subtype, int $cutoff, ?int $posts = null ): ?array {
+		$current = KDNA_SeoWriter_Yoast::get_all( $object_type, $id, $subtype );
+		$state   = KDNA_SeoWriter_State::refresh_locks( $object_type, $id, $current );
+		$enabled = (array) KDNA_SeoWriter_Settings::get( 'content', 'fields' );
+
+		$empty  = 0;
+		$locked = 0;
+		foreach ( KDNA_SeoWriter_State::GROUPS as $group => $group_fields ) {
+			if ( empty( $enabled[ $group ] ) ) {
+				continue;
+			}
+			foreach ( $group_fields as $field ) {
+				if ( '' === trim( (string) ( $current[ $field ] ?? '' ) ) ) {
+					++$empty;
+					$locked += empty( $state['locked'][ $field ] ) ? 0 : 1;
+				}
+			}
+		}
+		if ( 0 === $empty ) {
+			return null;
+		}
+
+		$out = static fn( string $code, string $reason ) => array(
+			'code'   => $code,
+			'reason' => $reason,
+		);
+
+		if ( 'term' === $object_type && 0 === $posts ) {
+			return $out( 'empty', __( 'Has no posts or products yet, so its page is empty. It is left out until it has some.', 'kdna-seo-writer' ) );
+		}
+		if ( KDNA_SeoWriter_Queue::waiting_fields( $object_type, array( $id ) ) ) {
+			return $out( 'review', __( 'Suggestions are waiting for approval in the Review tab.', 'kdna-seo-writer' ) );
+		}
+		if ( $locked === $empty ) {
+			return $out( 'locked', __( 'Its empty fields are locked, because a person edited or emptied them. Click Unlock in the SEO Writer box on its edit screen to let the plugin fill them.', 'kdna-seo-writer' ) );
+		}
+		if ( KDNA_SeoWriter_State::job_waiting( $object_type, $id ) ) {
+			return $out( 'queued', __( 'Already queued, waiting for the background job runner.', 'kdna-seo-writer' ) );
+		}
+
+		$tried = (int) ( 'term' === $object_type ? get_term_meta( $id, KDNA_SeoWriter_State::ATTEMPTED_KEY, true ) : get_post_meta( $id, KDNA_SeoWriter_State::ATTEMPTED_KEY, true ) );
+		if ( $tried >= $cutoff ) {
+			$last    = $state['last'];
+			$message = ! empty( $last['message'] ) ? (string) $last['message'] : __( 'no result was recorded.', 'kdna-seo-writer' );
+			$code    = 'not_enough_content' === $state['skipped'] && 'skipped' === ( $last['status'] ?? '' ) ? 'short' : 'tried';
+			/* translators: 1: how long ago, such as "2 hours", 2: the result. */
+			return $out( $code, sprintf( __( 'Tried %1$s ago: %2$s', 'kdna-seo-writer' ), human_time_diff( $tried ), $message ) );
+		}
+
+		return null;
+	}
+
+	/**
+	 * Checks the background job runner is working, so the Overview can say
+	 * if jobs are stuck or failing.
+	 *
+	 * @return array{stalled: bool, failed: int}
+	 */
+	public static function job_health(): array {
+		$due      = 0;
+		$recent   = 0;
+		$failed   = 0;
+		$groups   = array( KDNA_SeoWriter_Scheduler::GROUP, self::GROUP );
+		$past_due = time() - 20 * MINUTE_IN_SECONDS;
+
+		foreach ( $groups as $group ) {
+			$due    += self::count_query(
+				array(
+					'group'        => $group,
+					'status'       => 'pending',
+					'date'         => $past_due,
+					'date_compare' => '<=',
+				)
+			);
+			$recent += self::count_query(
+				array(
+					'group'            => $group,
+					'status'           => 'complete',
+					'modified'         => $past_due,
+					'modified_compare' => '>=',
+				)
+			);
+			$failed += self::count_query(
+				array(
+					'group'            => $group,
+					'status'           => 'failed',
+					'modified'         => time() - DAY_IN_SECONDS,
+					'modified_compare' => '>=',
+				)
+			);
+		}
+
+		return array(
+			// Jobs are overdue and none has finished for 20 minutes.
+			'stalled' => $due > 0 && 0 === $recent,
+			'failed'  => $failed,
+		);
+	}
+
+	/**
 	 * Explains why a run cannot start, if it cannot.
 	 *
 	 * @return string Empty when it can start.
@@ -385,6 +614,16 @@ final class KDNA_SeoWriter_Fill {
 		if ( '' !== $hook ) {
 			$query['hook'] = $hook;
 		}
+		return self::count_query( $query );
+	}
+
+	/**
+	 * Counts Action Scheduler jobs matching a query.
+	 *
+	 * @param array<string, mixed> $query Action Scheduler query.
+	 * @return int
+	 */
+	private static function count_query( array $query ): int {
 		if ( class_exists( 'ActionScheduler' ) && method_exists( 'ActionScheduler', 'store' ) ) {
 			try {
 				return (int) ActionScheduler::store()->query_actions( $query, 'count' );

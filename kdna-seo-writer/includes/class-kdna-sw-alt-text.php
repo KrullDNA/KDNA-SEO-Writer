@@ -686,10 +686,11 @@ final class KDNA_SeoWriter_Alt_Text {
 	 * alt text, not Decorative, not waiting for review and not tried in the
 	 * last week. Featured images come first, then images attached to a page.
 	 *
-	 * @param int $limit Most images to return.
+	 * @param int      $limit  Most images to return.
+	 * @param int|null $cutoff Leave out images tried at or after this time. Defaults to a week ago.
 	 * @return array<int, array{id: int, context: int}>
 	 */
-	public static function sweep_candidates( int $limit ): array {
+	public static function sweep_candidates( int $limit, ?int $cutoff = null ): array {
 		global $wpdb;
 
 		if ( $limit < 1 || ! self::enabled() ) {
@@ -718,7 +719,7 @@ final class KDNA_SeoWriter_Alt_Text {
 				self::ALT_KEY,
 				self::DECORATIVE_KEY,
 				KDNA_SeoWriter_State::ATTEMPTED_KEY,
-				time() - self::RETRY_AFTER,
+				$cutoff ?? time() - self::RETRY_AFTER,
 				$limit
 			),
 			ARRAY_A

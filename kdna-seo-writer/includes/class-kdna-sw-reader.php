@@ -21,6 +21,14 @@ defined( 'ABSPATH' ) || exit;
 final class KDNA_SeoWriter_Reader {
 
 	/**
+	 * Minimum words for this request only, or -1 to use the setting.
+	 * Write anyway (from the edit screen) sets it to 0 for one job.
+	 *
+	 * @var int
+	 */
+	public static int $min_words_override = -1;
+
+	/**
 	 * Fewest words for text to count as the first paragraph. Shorter lines
 	 * (labels, taglines, subtitles) are skipped.
 	 */
@@ -662,7 +670,7 @@ final class KDNA_SeoWriter_Reader {
 		$text       = self::html_to_text( $html );
 		$word_count = self::count_words( $text );
 		$max_chars  = max( 1000, (int) KDNA_SeoWriter_Settings::get( 'advanced', 'max_chars' ) );
-		$min_words  = (int) KDNA_SeoWriter_Settings::get( 'content', 'min_words' );
+		$min_words  = self::$min_words_override >= 0 ? self::$min_words_override : (int) KDNA_SeoWriter_Settings::get( 'content', 'min_words' );
 		$trimmed    = mb_strlen( $text ) > $max_chars;
 
 		$result = array_merge(

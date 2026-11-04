@@ -110,7 +110,7 @@
 					polls: 0,
 				},
 				overview: { data: null, loading: false, message: '' },
-				fill: { status: {}, preview: null, problem: '', loading: false, polling: false },
+				fill: { status: {}, preview: null, problem: '', loading: false, polling: false, retry: false, showLeft: false },
 				keyphrases: { items: [], loading: false, loaded: false, search: '', duplicatesOnly: false, open: '', reports: {} },
 
 				/**
@@ -574,7 +574,7 @@
 				 */
 				loadFillPreview: function () {
 					this.fill.loading = true;
-					window.wp.apiFetch( { path: data.restPath + '/fill?preview=1' } )
+					window.wp.apiFetch( { path: data.restPath + '/fill?preview=1' + ( this.fill.retry ? '&retry=1' : '' ) } )
 						.then( ( response ) => {
 							this.fill.preview = response.preview || null;
 							this.fill.status = response.status || {};
@@ -598,7 +598,7 @@
 						return;
 					}
 					this.busy = true;
-					window.wp.apiFetch( { path: data.restPath + '/fill', method: 'POST', data: { action: 'start' } } )
+					window.wp.apiFetch( { path: data.restPath + '/fill', method: 'POST', data: { action: 'start', retry: !! this.fill.retry } } )
 						.then( ( response ) => {
 							this.fill.status = response.status || {};
 							this.fill.preview = null;
@@ -667,6 +667,14 @@
 						return i18n.fillNothing;
 					}
 					return i18n.fillSummary.replace( '%1$d', p.items ).replace( '%2$d', p.images );
+				},
+
+				fillLeftTitle: function () {
+					return i18n.fillLeftOut.replace( '%d', this.fill.preview.left_out.count );
+				},
+
+				fillFailed: function () {
+					return i18n.fillFailed.replace( '%d', this.fill.preview.health.failed );
 				},
 
 				fillEstimate: function () {

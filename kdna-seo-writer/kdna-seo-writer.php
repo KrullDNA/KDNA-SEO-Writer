@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       KDNA SEO Writer
  * Description:       Writes SEO titles, meta descriptions, focus keyphrases, social text and image alt text with Claude, checked against Yoast's rules and saved into Yoast. Backend only, nothing loads on public pages.
- * Version:           1.0.4
+ * Version:           1.0.5
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Author:            KDNA
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'KDNA_SW_VERSION', '1.0.4' );
+define( 'KDNA_SW_VERSION', '1.0.5' );
 define( 'KDNA_SW_FILE', __FILE__ );
 define( 'KDNA_SW_DIR', plugin_dir_path( __FILE__ ) );
 define( 'KDNA_SW_URL', plugin_dir_url( __FILE__ ) );

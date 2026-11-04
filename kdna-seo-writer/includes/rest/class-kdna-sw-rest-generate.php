@@ -57,7 +57,7 @@ final class KDNA_SeoWriter_Rest_Generate {
 						array(
 							'action' => array(
 								'type'    => 'string',
-								'enum'    => array( 'generate', 'unlock' ),
+								'enum'    => array( 'generate', 'unlock', 'write_anyway' ),
 								'default' => 'generate',
 							),
 							'field'  => array(
@@ -119,7 +119,9 @@ final class KDNA_SeoWriter_Rest_Generate {
 			return new WP_Error( 'kdna_sw_cannot_generate', $problem, array( 'status' => 400 ) );
 		}
 
-		KDNA_SeoWriter_Scheduler::queue( $type, $id, $subtype, 'manual' );
+		// Write anyway: the page has less text than the Minimum words setting,
+		// and a person has chosen to let Claude write from what is there.
+		KDNA_SeoWriter_Scheduler::queue( $type, $id, $subtype, 'write_anyway' === $request['action'] ? 'short' : 'manual' );
 
 		$payload            = self::status( $type, $id, $subtype );
 		$payload['message'] = __( 'Queued. Claude usually finishes within a minute or two, and this panel updates by itself.', 'kdna-seo-writer' );
@@ -192,6 +194,8 @@ final class KDNA_SeoWriter_Rest_Generate {
 				'message' => (string) $last['message'],
 				'when'    => human_time_diff( (int) $last['time'] ),
 			) : null,
+			// Offered when the last try found too little text on the page.
+			'short'      => $last && 'skipped' === $last['status'] && 'not_enough_content' === $state['skipped'],
 			'mode'       => KDNA_SeoWriter_Settings::mode_for( 'term' === $type ? 'taxonomy' : 'post_type', $subtype ),
 			'problem'    => self::cannot_generate( $type, $subtype ),
 			'review_url' => admin_url( 'options-general.php?page=' . KDNA_SeoWriter_Admin::PAGE . '#review' ),
