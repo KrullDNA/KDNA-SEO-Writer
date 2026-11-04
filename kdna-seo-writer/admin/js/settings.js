@@ -89,6 +89,7 @@
 				models: data.models || [],
 				postTypes: data.postTypes || [],
 				taxonomies: data.taxonomies || [],
+				hiddenTypes: data.hiddenTypes || [],
 				integrations: data.integrations || {},
 				starterRules: data.starterRules || [],
 				busy: false,

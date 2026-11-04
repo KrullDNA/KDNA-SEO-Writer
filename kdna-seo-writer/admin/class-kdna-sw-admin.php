@@ -185,9 +185,25 @@ final class KDNA_SeoWriter_Admin {
 	 * @return array<string, mixed>
 	 */
 	private function app_data(): array {
+		$reasons = array(
+			'internal' => __( 'a design building block, not a page', 'kdna-seo-writer' ),
+			'no_pages' => __( 'its items have no public pages', 'kdna-seo-writer' ),
+			'noindex'  => __( 'Yoast keeps it out of search results', 'kdna-seo-writer' ),
+		);
+		$hidden  = array();
+
 		$post_types = array();
 		foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $type ) {
 			if ( 'attachment' === $type->name ) {
+				continue;
+			}
+			$reason = KDNA_SeoWriter_Settings::hidden_reason( 'post_type', $type->name );
+			if ( '' !== $reason ) {
+				$hidden[] = array(
+					'label'  => $type->labels->name,
+					'name'   => $type->name,
+					'reason' => $reasons[ $reason ],
+				);
 				continue;
 			}
 			$post_types[] = array(
@@ -206,6 +222,15 @@ final class KDNA_SeoWriter_Admin {
 			'objects'
 		) as $taxonomy ) {
 			if ( 'post_format' === $taxonomy->name ) {
+				continue;
+			}
+			$reason = KDNA_SeoWriter_Settings::hidden_reason( 'taxonomy', $taxonomy->name );
+			if ( '' !== $reason ) {
+				$hidden[] = array(
+					'label'  => $taxonomy->labels->name,
+					'name'   => $taxonomy->name,
+					'reason' => $reasons[ $reason ],
+				);
 				continue;
 			}
 			$taxonomies[] = array(
@@ -227,6 +252,7 @@ final class KDNA_SeoWriter_Admin {
 			'restPath'     => '/' . KDNA_SW_REST_NAMESPACE,
 			'state'        => KDNA_SeoWriter_Rest_Settings::payload(),
 			'postTypes'    => $post_types,
+			'hiddenTypes'  => $hidden,
 			'taxonomies'   => $taxonomies,
 			'models'       => $models,
 			'integrations' => KDNA_SeoWriter_Plugin::instance()->integrations(),

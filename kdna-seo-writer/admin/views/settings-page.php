@@ -233,13 +233,17 @@ $kdna_sw_tabs = array(
 								</select>
 							</td>
 							<td x-show="integrations.jetengine">
-								<input type="text" class="regular-text" x-model="settings.content.jet_fields[type.name]" placeholder="intro, faq.question, faq.answer" :aria-label="type.label + ' <?php echo esc_js( __( 'JetEngine fields', 'kdna-seo-writer' ) ); ?>'">
+								<textarea rows="3" class="large-text kdna-sw-jet-fields" x-model="settings.content.jet_fields[type.name]" placeholder="intro, faq.question:h3, faq.answer" :aria-label="type.label + ' <?php echo esc_js( __( 'JetEngine fields', 'kdna-seo-writer' ) ); ?>'"></textarea>
 							</td>
 						</tr>
 					</template>
 				</tbody>
 			</table>
-			<p class="description" x-show="integrations.jetengine"><?php esc_html_e( 'JetEngine fields: type the field names, separated by commas, exactly as they appear in JetEngine. For a repeater, use a dot between the repeater name and the sub-field, for example faq.answer reads every answer in the faq repeater.', 'kdna-seo-writer' ); ?></p>
+			<div class="description kdna-sw-help" x-show="integrations.jetengine">
+				<p><?php esc_html_e( 'JetEngine fields: type the field names (Name/ID in JetEngine), separated by commas, in the order they appear on the page. The plugin reads the normal content too, so only list fields that hold visible text.', 'kdna-seo-writer' ); ?></p>
+				<p><?php esc_html_e( 'For a repeater, put a dot between the repeater and the sub-field, for example faq.answer. List several sub-fields of the same repeater and it is read row by row, each heading followed by its own text.', 'kdna-seo-writer' ); ?></p>
+				<p><?php esc_html_e( 'Add :h2 or :h3 to a field that is shown as a heading, for example article_sections.section_heading:h2, so it counts as a heading.', 'kdna-seo-writer' ); ?></p>
+			</div>
 
 			<table class="widefat striped kdna-sw-table">
 				<thead>
@@ -263,6 +267,16 @@ $kdna_sw_tabs = array(
 					</template>
 				</tbody>
 			</table>
+
+			<div class="kdna-sw-hidden-types" x-show="hiddenTypes.length">
+				<p class="description"><strong><?php esc_html_e( 'Not shown, so always left alone:', 'kdna-seo-writer' ); ?></strong></p>
+				<ul>
+					<template x-for="type in hiddenTypes" :key="type.name">
+						<li class="description"><span x-text="type.label"></span> <code x-text="type.name"></code>: <span x-text="type.reason"></span></li>
+					</template>
+				</ul>
+				<p class="description"><?php esc_html_e( 'To include one that Yoast keeps out of search results, switch on "Show in search results" for it in Yoast SEO > Settings > Content types (or Categories and tags) first.', 'kdna-seo-writer' ); ?></p>
+			</div>
 		</div>
 
 		<div class="kdna-sw-card">

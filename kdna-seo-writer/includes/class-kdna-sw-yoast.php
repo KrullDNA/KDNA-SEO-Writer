@@ -128,6 +128,26 @@ final class KDNA_SeoWriter_Yoast {
 	}
 
 	/**
+	 * Tells you whether Yoast is set to keep a content type out of search
+	 * results ("Show in search results" switched off in Yoast's settings).
+	 *
+	 * Stored in the wpseo_titles option as noindex-{post type} and
+	 * noindex-tax-{taxonomy} (Yoast SEO 28.9).
+	 *
+	 * @param string $object_type Either post or term.
+	 * @param string $subtype     Post type or taxonomy.
+	 * @return bool
+	 */
+	public static function hidden_from_search( string $object_type, string $subtype ): bool {
+		if ( ! self::is_active() ) {
+			return false;
+		}
+		$titles = get_option( 'wpseo_titles', array() );
+		$key    = 'term' === $object_type ? 'noindex-tax-' . $subtype : 'noindex-' . $subtype;
+		return is_array( $titles ) && ! empty( $titles[ $key ] );
+	}
+
+	/**
 	 * Reads one field.
 	 *
 	 * @param string $object_type Either post or term.

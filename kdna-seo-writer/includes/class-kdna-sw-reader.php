@@ -21,6 +21,12 @@ defined( 'ABSPATH' ) || exit;
 final class KDNA_SeoWriter_Reader {
 
 	/**
+	 * Fewest words for text to count as the first paragraph. Shorter lines
+	 * (labels, taglines, subtitles) are skipped.
+	 */
+	private const MIN_PARAGRAPH_WORDS = 8;
+
+	/**
 	 * Most items listed when reading a category or tag.
 	 */
 	private const TERM_ITEMS = 20;
@@ -431,13 +437,22 @@ final class KDNA_SeoWriter_Reader {
 	 *
 	 * Fields are named as in JetEngine. Repeater sub-fields use dot notation,
 	 * the same approach as KDNA Reading Time: "faq.answer" reads the answer
-	 * sub-field from every row of the faq repeater. JetEngine saves meta fields
-	 * and repeaters as normal post meta (repeaters as an array of rows), so they
-	 * are read with get_post_meta and work even if JetEngine is switched off.
+	 * sub-field from every row of the faq repeater. Adding :h2 to :h6 to a
+	 * field reads it as a heading of that level, so heading fields count as
+	 * headings (for Claude and for the keyphrase report).
+	 *
+	 * When several sub-fields of the same repeater are listed, the repeater is
+	 * read row by row, so each section's heading is followed by its own text,
+	 * as on the page. Fields are read in the order they are listed, with all
+	 * the fields of one repeater read together where the first of them appears.
+	 *
+	 * JetEngine saves meta fields and repeaters as normal post meta (repeaters
+	 * as an array of rows), so they are read with get_post_meta and work even
+	 * if JetEngine is switched off.
 	 *
 	 * @param int    $post_id   Post ID.
 	 * @param string $post_type Post type.
-	 * @return string HTML with one paragraph per value.
+	 * @return string HTML.
 	 */
 	private static function jetengine_html( int $post_id, string $post_type ): string {
 		$map = KDNA_SeoWriter_Settings::get( 'content', 'jet_fields' );
@@ -445,20 +460,75 @@ final class KDNA_SeoWriter_Reader {
 			return '';
 		}
 
-		$html  = '';
-		$paths = array_filter( array_map( 'trim', explode( ',', (string) $map[ $post_type ] ) ) );
+		// Group the listed fields by their top-level field, keeping the order.
+		$groups = array();
+		foreach ( KDNA_SeoWriter_Settings::field_paths( (string) $map[ $post_type ] ) as $path ) {
+			$base              = array_shift( $path['keys'] );
+			$groups[ $base ][] = $path;
+		}
 
-		foreach ( $paths as $path ) {
-			$keys  = explode( '.', $path );
-			$base  = array_shift( $keys );
+		$html = '';
+		foreach ( $groups as $base => $paths ) {
 			$value = get_post_meta( $post_id, $base, true );
 
-			foreach ( self::dig( $value, $keys ) as $text ) {
-				$html .= '<p>' . $text . '</p>';
+			$all_sub_fields = ! array_filter( $paths, static fn( $path ) => ! $path['keys'] );
+			if ( $all_sub_fields && self::is_rows( $value ) ) {
+				foreach ( $value as $row ) {
+					foreach ( $paths as $path ) {
+						foreach ( self::dig( $row, $path['keys'] ) as $text ) {
+							$html .= self::wrap( $text, $path['tag'] );
+						}
+					}
+				}
+				continue;
+			}
+
+			foreach ( $paths as $path ) {
+				foreach ( self::dig( $value, $path['keys'] ) as $text ) {
+					$html .= self::wrap( $text, $path['tag'] );
+				}
 			}
 		}
 
 		return $html;
+	}
+
+	/**
+	 * Tells you whether a field value is a list of repeater rows.
+	 *
+	 * @param mixed $value Field value.
+	 * @return bool
+	 */
+	private static function is_rows( $value ): bool {
+		if ( ! is_array( $value ) || ! $value ) {
+			return false;
+		}
+		foreach ( $value as $row ) {
+			if ( ! is_array( $row ) ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Wraps a field's text as a heading or a paragraph.
+	 *
+	 * Text from a rich text (WYSIWYG) field already has its own paragraphs,
+	 * so it is used as it is rather than wrapped again.
+	 *
+	 * @param string $text Field text.
+	 * @param string $tag  p, or h2 to h6.
+	 * @return string HTML.
+	 */
+	private static function wrap( string $text, string $tag ): string {
+		if ( 'p' !== $tag ) {
+			return '<' . $tag . '>' . esc_html( trim( wp_strip_all_tags( $text ) ) ) . '</' . $tag . '>';
+		}
+		if ( preg_match( '#<(p|ul|ol|h[1-6]|div|table|blockquote)\b#i', $text ) ) {
+			return $text;
+		}
+		return '<p>' . $text . '</p>';
 	}
 
 	/**
@@ -736,7 +806,7 @@ final class KDNA_SeoWriter_Reader {
 		if ( preg_match_all( '#<p\b[^>]*>(.*?)</p>#is', $html, $matches ) ) {
 			foreach ( $matches[1] as $paragraph ) {
 				$text = self::inline_text( $paragraph );
-				if ( self::count_words( $text ) >= 5 ) {
+				if ( self::count_words( $text ) >= self::MIN_PARAGRAPH_WORDS ) {
 					return $text;
 				}
 			}
@@ -744,7 +814,7 @@ final class KDNA_SeoWriter_Reader {
 
 		$lines = preg_split( '/\n+/', self::html_to_text( $html ) ) ?: array();
 		foreach ( $lines as $line ) {
-			if ( self::count_words( $line ) >= 5 ) {
+			if ( self::count_words( $line ) >= self::MIN_PARAGRAPH_WORDS ) {
 				return trim( $line );
 			}
 		}

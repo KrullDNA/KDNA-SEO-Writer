@@ -18,8 +18,6 @@ function delete_post_meta($id,$k){ unset($GLOBALS['meta'][$id][$k]); return true
 function get_term_meta($id,$k,$s=false){ return $GLOBALS['tmeta'][$id][$k] ?? ''; }
 function update_term_meta($id,$k,$v){ $GLOBALS['tmeta'][$id][$k]=$v; return true; }
 function wp_slash($v){ return is_string($v) ? addslashes($v) : $v; }
-function get_post_type_object($t){ return (object)['labels'=>(object)['singular_name'=>ucfirst($t)]]; }
-function get_taxonomy($t){ return (object)['labels'=>(object)['singular_name'=>'Category'],'object_type'=>['post']]; }
 function get_term($id,$tax=''){ return $GLOBALS['terms'][$id] ?? null; }
 function get_term_link($t){ return 'https://example.com/category/x/'; }
 function get_bloginfo($k){ return 'Apotheca'; }

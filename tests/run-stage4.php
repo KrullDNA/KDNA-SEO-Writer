@@ -14,7 +14,6 @@ function current_user_can( $cap, ...$a ) { return $GLOBALS['can']; }
 function wp_is_post_revision( $p ) { return false; }
 function wp_is_post_autosave( $p ) { return false; }
 function wp_doing_ajax() { return false; }
-function apply_filters( $h, $v, ...$a ) { return $v; }
 function human_time_diff( $t ) { return 'a moment'; }
 function admin_url( $p = '' ) { return 'https://example.com/wp-admin/' . $p; }
 function get_edit_post_link( $id, $c = '' ) { return 'https://example.com/wp-admin/post.php?post=' . $id; }
