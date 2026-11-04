@@ -4,7 +4,7 @@
 // Minimal stand-ins for the WordPress functions the plugin calls, for logic tests only.
 define('ABSPATH', __DIR__ . '/');
 $GLOBALS['opts'] = []; $GLOBALS['http'] = []; $GLOBALS['inserts'] = []; $GLOBALS['is_admin'] = false; $GLOBALS['cron'] = false;
-class WP_Error { public $c; public $m; public $d; function __construct($c='',$m='',$d=[]){$this->c=$c;$this->m=$m;$this->d=$d;} function get_error_message(){return $this->m;} function get_error_code(){return $this->c;} }
+class WP_Error { public $c; public $m; public $d; function __construct($c='',$m='',$d=[]){$this->c=$c;$this->m=$m;$this->d=$d;} function get_error_message(){return $this->m;} function get_error_code(){return $this->c;} function get_error_data(){return $this->d;} }
 function is_wp_error($x){ return $x instanceof WP_Error; }
 function __($s,$d=null){return $s;} function esc_html__($s,$d=null){return $s;} function esc_html($s){return htmlspecialchars($s);} 
 function sanitize_text_field($s){ return trim(preg_replace('/\s+/',' ',strip_tags((string)$s))); }
@@ -42,4 +42,4 @@ function get_post_type_object($t){ return (object)['name'=>$t,'labels'=>(object)
 function get_taxonomy($t){ return (object)['name'=>$t,'labels'=>(object)['singular_name'=>'Category','name'=>'Categories'],'object_type'=>['post']]; }
 function is_post_type_viewable($o){ return ! in_array( $o->name, $GLOBALS['not_viewable'] ?? [], true ); }
 function is_taxonomy_viewable($o){ return ! in_array( $o->name, $GLOBALS['not_viewable'] ?? [], true ); }
-function apply_filters( $h, $v, ...$a ) { return $v; }
+function apply_filters( $h, $v, ...$a ) { return isset( $GLOBALS['filters'][ $h ] ) ? $GLOBALS['filters'][ $h ]( $v, ...$a ) : $v; }

@@ -3,7 +3,7 @@ Contributors: kdna
 Tags: seo, yoast, meta description, alt text, ai
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 1.0.3
+Stable tag: 1.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -40,7 +40,7 @@ It is a backend tool. Public pages load no files, run no queries and are exactly
 
 == Installation ==
 
-1. Upload kdna-seo-writer-1.0.3.zip in Plugins > Add New > Upload Plugin, then activate it.
+1. Upload kdna-seo-writer-1.0.5.zip in Plugins > Add New > Upload Plugin, then activate it.
 2. Make sure Yoast SEO is active.
 3. Get an Anthropic API key:
    * Go to console.anthropic.com and sign in or create an account.
@@ -156,6 +156,22 @@ The SEO titles the plugin writes keep Yoast's %%sep%% and %%sitename%% variables
 Yoast's SEO fields are always kept, including everything the plugin wrote. The plugin's own data (settings, API key, review queue, log) is only removed if "Delete the plugin's own data when the plugin is deleted" is ticked in the Advanced tab.
 
 == Changelog ==
+
+= 1.0.5 =
+* Check what needs doing now lists every item with empty fields that a run leaves out, and why: tried recently (with the result, such as Not enough content), waiting in Review, already queued, locked by a person, or a category with no posts. This explains why the count can be lower than the Coverage table.
+* New option: Also try again items tried in the last week, for after adding text to pages or updating the plugin.
+* Fill empty fields now says so when there is nothing to start, instead of showing Started and then disappearing.
+* Items whose only empty fields are locked by a person are no longer counted or queued, since there is nothing to do for them.
+* Write anyway: when Generate now finds too little text on a page, the SEO Writer box explains this and offers a Write anyway button, so Claude writes from the title and the text there is.
+* The Overview warns when background jobs are not running, or have failed in the last day, and the edit screen box says so if a job is still waiting after six minutes.
+
+= 1.0.4 =
+* Fix: Fill empty fields now could leave items behind, so it had to be run several times. It now goes back for anything it could not finish by itself, up to five passes, and says at the end if anything is still left.
+* Fix: a job held back because the server was busy was never booked again, so that item was silently skipped. It is now booked again 15 minutes later, and stays part of the Fill run.
+* Fix: a temporary problem at Anthropic (busy, rate limited or not reachable) no longer counts as a try, so the item is picked up again soon instead of being left for a week.
+* Each background job now gets its own time allowance, so a host's 30 second limit can no longer stop a job part-way.
+* Server load is now judged per processor core, so busy shared hosts no longer hold jobs back when they have plenty of room.
+* An item or image is never booked twice when the nightly sweep and a Fill run overlap.
 
 = 1.0.3 =
 * New: Fill empty fields now, on the Overview tab, for the first run on a site. Shows how many items and images need doing and roughly what it will cost, then works through them all in the background, with progress and a Stop button.

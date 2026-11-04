@@ -15,7 +15,7 @@ function get_terms( $a ) { return []; }
 function as_has_scheduled_action( $hook, $args = null, $group = '' ) { foreach ( $GLOBALS['as'] as $a ) { if ( $a['hook'] === $hook && ( null === $args || $a['args'] === $args ) && ( '' === $group || $a['group'] === $group ) ) return true; } return false; }
 function as_schedule_single_action( $ts, $hook, $args = [], $group = '' ) { $GLOBALS['as'][] = compact( 'ts', 'hook', 'args', 'group' ); return count( $GLOBALS['as'] ); }
 function as_unschedule_all_actions( $hook, $args = [], $group = '' ) { $GLOBALS['as'] = array_values( array_filter( $GLOBALS['as'], fn( $a ) => ! ( ( '' === $hook || $a['hook'] === $hook ) && ( '' === $group || $a['group'] === $group ) ) ) ); }
-function as_get_scheduled_actions( $q, $f = 'ids' ) { return array_keys( array_filter( $GLOBALS['as'], fn( $a ) => $a['group'] === $q['group'] ) ); }
+function as_get_scheduled_actions( $q, $f = 'ids' ) { return 'pending' !== ( $q['status'] ?? 'pending' ) ? [] : array_keys( array_filter( $GLOBALS['as'], fn( $a ) => $a['group'] === $q['group'] && ( empty( $q['hook'] ) || $a['hook'] === $q['hook'] ) ) ); }
 require __DIR__ . '/sqlite-helpers.php';
 foreach ( [ 'plugin', 'settings', 'crypto', 'claude', 'reader', 'install', 'yoast', 'rules', 'keyphrases', 'state', 'log', 'cache', 'writer', 'usage', 'queue', 'scheduler', 'alt-text', 'fill' ] as $f ) require $P . "includes/class-kdna-sw-$f.php";
 
@@ -54,7 +54,7 @@ check( 'no warning when there is no limit', ! KDNA_SeoWriter_Fill::preview()['ov
 echo "-- running\n";
 $GLOBALS['as'] = [ [ 'ts' => time(), 'hook' => 'kdna_sw_generate', 'args' => [ 'post', 99, 'post', 'auto' ], 'group' => 'kdna-seo-writer' ] ];
 $st = KDNA_SeoWriter_Fill::start();
-$fill = array_values( array_filter( $GLOBALS['as'], fn( $a ) => 'kdna-seo-writer-fill' === $a['group'] ) );
+$fill = array_values( array_filter( $GLOBALS['as'], fn( $a ) => 'kdna-seo-writer-fill' === $a['group'] && 'kdna_sw_fill_check' !== $a['hook'] ) );
 check( 'queues every item and image in its own group', ! is_wp_error( $st ) && 4 === count( $fill ) && $st['total'] === 4 && $st['items'] === 3 && $st['images'] === 1 );
 check( 'items fill empty fields only (auto mode)', 'auto' === $fill[0]['args'][3] && 'kdna_sw_alt' === $fill[3]['hook'] );
 check( 'jobs are spaced out', $fill[1]['ts'] - $fill[0]['ts'] === 10 && $fill[3]['ts'] - $fill[0]['ts'] === 30 );
@@ -72,7 +72,9 @@ check( 'status shows stopped', ! $st['running'] && $st['stopped'] && ! $st['fini
 echo "-- finishing\n";
 $GLOBALS['as'] = [];
 KDNA_SeoWriter_Fill::start();
-$GLOBALS['as'] = []; // every job has run
+$GLOBALS['as'] = []; // every job has run, and each item was tried
+foreach ( [ 1, 2, 3, 20 ] as $id ) meta( $id, 'kdna_sw_attempted', time() );
+KDNA_SeoWriter_Fill::check();
 $st = KDNA_SeoWriter_Fill::status();
 check( 'status shows finished when every job has run', ! $st['running'] && $st['finished'] && 4 === $st['done'] && '' !== $st['started'] );
 

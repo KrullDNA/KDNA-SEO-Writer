@@ -162,7 +162,7 @@ final class KDNA_SeoWriter_Alt_Text {
 			if ( KDNA_SeoWriter_Queue::waiting_fields( 'attachment', array( $image_id ) ) ) {
 				continue;
 			}
-			if ( self::queue( $image_id, $post_id, $mode, $count * 20 ) ) {
+			if ( self::queue( $image_id, $post_id, $mode, $count * 20, KDNA_SeoWriter_Scheduler::run_group() ) ) {
 				++$count;
 			}
 			if ( $count >= self::PER_ITEM ) {
@@ -186,8 +186,9 @@ final class KDNA_SeoWriter_Alt_Text {
 		if ( ! KDNA_SeoWriter_Scheduler::available() ) {
 			return false;
 		}
+		// Checked across every group, so the same image is never booked twice.
 		$args = array( $image_id, $context_id, $mode );
-		if ( as_has_scheduled_action( self::JOB, $args, $group ) ) {
+		if ( as_has_scheduled_action( self::JOB, $args ) ) {
 			return true;
 		}
 		as_schedule_single_action( time() + max( 0, $delay ), self::JOB, $args, $group );
@@ -208,22 +209,41 @@ final class KDNA_SeoWriter_Alt_Text {
 		$context_id = (int) $context_id;
 		$mode       = (string) $mode;
 
+		KDNA_SeoWriter_Scheduler::give_job_time();
+
 		if ( 'auto' === $mode && KDNA_SeoWriter_Usage::limit_reached() ) {
 			KDNA_SeoWriter_State::set_last( 'post', $image_id, 'paused', __( 'Paused: the monthly spend limit has been reached.', 'kdna-seo-writer' ) );
 			return;
 		}
 		if ( 'auto' === $mode && KDNA_SeoWriter_Scheduler::server_busy() ) {
-			KDNA_SeoWriter_State::set_job( 'post', $image_id, false );
-			self::queue( $image_id, $context_id, $mode, 15 * MINUTE_IN_SECONDS );
+			KDNA_SeoWriter_Scheduler::later( self::JOB, array( $image_id, $context_id, $mode ) );
 			return;
 		}
+		// A suggestion may already be waiting, for example from the same image on another page.
+		if ( 'auto' === $mode && KDNA_SeoWriter_Queue::waiting_fields( 'attachment', array( $image_id ) ) ) {
+			KDNA_SeoWriter_State::set_job( 'post', $image_id, false );
+			return;
+		}
+
 		if ( self::is_decorative( $image_id ) || ( 'auto' === $mode && '' !== self::get_alt( $image_id ) ) ) {
 			KDNA_SeoWriter_State::set_last( 'post', $image_id, 'nothing', __( 'Nothing needed: the image has alt text or is marked Decorative.', 'kdna-seo-writer' ) );
 			return;
 		}
 
-		$result = self::generate( $image_id, $context_id );
-		KDNA_SeoWriter_State::attempted( 'post', $image_id );
+		try {
+			$result = self::generate( $image_id, $context_id );
+		} catch ( \Throwable $e ) {
+			$result = array(
+				'status'    => 'error',
+				'message'   => __( 'Something went wrong while writing alt text for this image.', 'kdna-seo-writer' ),
+				'temporary' => false,
+			);
+		}
+
+		// A temporary problem with Anthropic does not count as a try.
+		if ( empty( $result['temporary'] ) ) {
+			KDNA_SeoWriter_State::attempted( 'post', $image_id );
+		}
 
 		if ( 'error' === $result['status'] ) {
 			KDNA_SeoWriter_State::set_last( 'post', $image_id, 'error', $result['message'] );
@@ -244,7 +264,7 @@ final class KDNA_SeoWriter_Alt_Text {
 	 *
 	 * @param int $image_id   Attachment ID.
 	 * @param int $context_id Page the image is on, or 0.
-	 * @return array{status: string, alt: string, checks: array<int, array<string, mixed>>, attempts: int, message: string, keyphrase_allowed: bool}
+	 * @return array{status: string, alt: string, checks: array<int, array<string, mixed>>, attempts: int, message: string, keyphrase_allowed: bool, temporary: bool}
 	 */
 	public static function generate( int $image_id, int $context_id ): array {
 		$out = array(
@@ -254,6 +274,7 @@ final class KDNA_SeoWriter_Alt_Text {
 			'attempts'          => 0,
 			'message'           => '',
 			'keyphrase_allowed' => false,
+			'temporary'         => false,
 		);
 
 		$image = self::image_payload( $image_id );
@@ -286,7 +307,8 @@ final class KDNA_SeoWriter_Alt_Text {
 		$answer  = KDNA_SeoWriter_Claude::structured( $system, array( $image, KDNA_SeoWriter_Claude::text_block( $message ) ), $schema, $claude );
 		++$out['attempts'];
 		if ( is_wp_error( $answer ) ) {
-			$out['message'] = $answer->get_error_message();
+			$out['message']   = $answer->get_error_message();
+			$out['temporary'] = KDNA_SeoWriter_Claude::is_temporary( $answer );
 			return $out;
 		}
 
@@ -664,10 +686,11 @@ final class KDNA_SeoWriter_Alt_Text {
 	 * alt text, not Decorative, not waiting for review and not tried in the
 	 * last week. Featured images come first, then images attached to a page.
 	 *
-	 * @param int $limit Most images to return.
+	 * @param int      $limit  Most images to return.
+	 * @param int|null $cutoff Leave out images tried at or after this time. Defaults to a week ago.
 	 * @return array<int, array{id: int, context: int}>
 	 */
-	public static function sweep_candidates( int $limit ): array {
+	public static function sweep_candidates( int $limit, ?int $cutoff = null ): array {
 		global $wpdb;
 
 		if ( $limit < 1 || ! self::enabled() ) {
@@ -696,7 +719,7 @@ final class KDNA_SeoWriter_Alt_Text {
 				self::ALT_KEY,
 				self::DECORATIVE_KEY,
 				KDNA_SeoWriter_State::ATTEMPTED_KEY,
-				time() - self::RETRY_AFTER,
+				$cutoff ?? time() - self::RETRY_AFTER,
 				$limit
 			),
 			ARRAY_A

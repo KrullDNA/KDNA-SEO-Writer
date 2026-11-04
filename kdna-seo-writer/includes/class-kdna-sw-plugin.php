@@ -70,6 +70,7 @@ final class KDNA_SeoWriter_Plugin {
 		KDNA_SeoWriter_Scheduler::hooks();
 		KDNA_SeoWriter_Alt_Text::hooks();
 		KDNA_SeoWriter_Guard::hooks();
+		KDNA_SeoWriter_Fill::hooks();
 
 		if ( defined( 'WP_CLI' ) && WP_CLI && class_exists( 'WP_CLI' ) ) {
 			WP_CLI::add_command( 'kdna-sw', 'KDNA_SeoWriter_Cli' );

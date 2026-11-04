@@ -164,6 +164,10 @@
 		if ( button ) {
 			button.disabled = !! data.job;
 		}
+		var short = box.querySelector( '.kdna-sw-short' );
+		if ( short ) {
+			short.hidden = ! data.short || !! data.job;
+		}
 		if ( msg ) {
 			msg.textContent = message || ( data.job ? i18n.queued : ( data.last && data.last.message ) || '' );
 		}
@@ -278,6 +282,7 @@
 	function pollBox( box, count ) {
 		count = count || 0;
 		if ( count >= POLL_LIMIT ) {
+			setMessage( box, i18n.stillWaiting );
 			return;
 		}
 		window.setTimeout( function () {
@@ -310,8 +315,9 @@
 		var unlock = target.closest( '[data-kdna-sw-unlock]' );
 		var copy = target.closest( '[data-kdna-sw-copy]' );
 		var slug = target.closest( '[data-kdna-sw-apply-slug]' );
+		var anyway = target.closest( '[data-kdna-sw-write-anyway]' );
 		var box = target.closest( '.kdna-sw-box' );
-		if ( ! box || ( ! generate && ! unlock && ! copy && ! slug ) ) {
+		if ( ! box || ( ! generate && ! unlock && ! copy && ! slug && ! anyway ) ) {
 			return;
 		}
 
@@ -334,8 +340,10 @@
 			return;
 		}
 
-		if ( generate ) {
+		if ( generate || anyway ) {
 			var before = 'classic' === cfg.mode ? classicSaveFirst() : Promise.resolve( '' );
+			var action = anyway ? 'write_anyway' : 'generate';
+			generate = generate || anyway;
 
 			generate.disabled = true;
 			before.then( function ( saving ) {
@@ -343,7 +351,7 @@
 					throw new Error( i18n.updateFirst );
 				}
 				setMessage( box, i18n.working );
-				return act( item, 'generate' );
+				return act( item, action );
 			} ).then( function ( data ) {
 				renderBox( box, data, data.message );
 				pollBox( box );
@@ -523,6 +531,8 @@
 					window.setTimeout( function () {
 						load( true );
 					}, POLL_MS );
+				} else if ( next.job && afterJob ) {
+					setMessage( i18n.stillWaiting );
 				} else if ( afterJob ) {
 					var done = ( next.last && next.last.message ) || '';
 					if ( next.last && 'saved' === next.last.status ) {
@@ -542,7 +552,8 @@
 			}
 		}, [ post.id ] );
 
-		function generate() {
+		function generate( action ) {
+			action = 'write_anyway' === action ? action : 'generate';
 			var editor = wp.data.select( 'core/editor' );
 			var needsSave = editor.isEditedPostNew() || editor.isEditedPostDirty();
 
@@ -557,7 +568,7 @@
 					throw new Error( i18n.saveFailed );
 				}
 				setMessage( i18n.working );
-				return act( item, 'generate' );
+				return act( item, action );
 			} ).then( function ( next ) {
 				setData( next );
 				setMessage( next.message || i18n.queued );
@@ -609,13 +620,21 @@
 				children.push( el( 'p', { className: 'kdna-sw-msg', key: 'problem' }, data.problem ) );
 			} else {
 				children.push( el( 'p', { key: 'button' },
-					el( Button, { variant: 'secondary', onClick: generate, disabled: busy || data.job, isBusy: busy || data.job }, i18n.generate )
+					el( Button, { variant: 'secondary', onClick: function () {
+						generate( 'generate' );
+					}, disabled: busy || data.job, isBusy: busy || data.job }, i18n.generate )
 				) );
 				var text = message || ( data.job ? i18n.queued : ( data.last && data.last.message ) || '' );
 				if ( post.isNew && ! text ) {
 					text = i18n.savesDraft;
 				}
 				children.push( el( 'p', { className: 'kdna-sw-msg', role: 'status', 'aria-live': 'polite', key: 'msg' }, text ) );
+				if ( data.short && ! data.job ) {
+					children.push( el( 'p', { className: 'description', key: 'short-hint' }, i18n.shortHint ) );
+					children.push( el( 'p', { key: 'short' }, el( Button, { variant: 'secondary', onClick: function () {
+						generate( 'write_anyway' );
+					}, disabled: busy }, i18n.writeAnyway ) ) );
+				}
 				if ( data.fields && data.fields.some( function ( field ) {
 					return 'waiting' === field.status;
 				} ) ) {

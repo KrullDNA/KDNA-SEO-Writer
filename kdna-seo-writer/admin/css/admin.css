@@ -441,3 +441,11 @@
 	margin: 4px 0 8px 18px;
 	list-style: disc;
 }
+
+.kdna-sw-fill-left table {
+	margin: 0 0 12px;
+}
+
+.kdna-sw-fill-left td {
+	vertical-align: top;
+}

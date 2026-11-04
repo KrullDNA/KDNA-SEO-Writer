@@ -65,6 +65,7 @@ final class KDNA_SeoWriter_Writer {
 			),
 			'checks'         => array(),
 			'attempts'       => 0,
+			'temporary'      => false,
 		);
 
 		if ( ! KDNA_SeoWriter_Yoast::is_active() ) {
@@ -102,7 +103,8 @@ final class KDNA_SeoWriter_Writer {
 		++$result['attempts'];
 
 		if ( is_wp_error( $answer ) ) {
-			$result['message'] = $answer->get_error_message();
+			$result['message']   = $answer->get_error_message();
+			$result['temporary'] = KDNA_SeoWriter_Claude::is_temporary( $answer );
 			return $result;
 		}
 

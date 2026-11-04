@@ -23,7 +23,7 @@ function wp_update_post( $data, $err = false ) { $GLOBALS['posts'][ $data['ID'] 
 
 require __DIR__ . '/sqlite-helpers.php';
 
-foreach ( [ 'plugin', 'settings', 'crypto', 'claude', 'reader', 'install', 'yoast', 'rules', 'keyphrases', 'state', 'log', 'cache', 'writer', 'usage', 'queue', 'scheduler', 'alt-text', 'report' ] as $f ) require $P . "includes/class-kdna-sw-$f.php";
+foreach ( [ 'plugin', 'settings', 'crypto', 'claude', 'reader', 'install', 'yoast', 'rules', 'keyphrases', 'state', 'log', 'cache', 'writer', 'usage', 'queue', 'scheduler', 'alt-text', 'fill', 'report' ] as $f ) require $P . "includes/class-kdna-sw-$f.php";
 
 $fail = 0;
 function check( $name, $cond ) { global $fail; echo ( $cond ? 'PASS ' : 'FAIL ' ) . $name . "\n"; if ( ! $cond ) $fail++; }

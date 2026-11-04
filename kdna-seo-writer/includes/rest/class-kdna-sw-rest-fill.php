@@ -32,6 +32,10 @@ final class KDNA_SeoWriter_Rest_Fill {
 							'type'    => 'boolean',
 							'default' => false,
 						),
+						'retry'   => array(
+							'type'    => 'boolean',
+							'default' => false,
+						),
 					),
 				),
 				array(
@@ -43,6 +47,10 @@ final class KDNA_SeoWriter_Rest_Fill {
 							'type'     => 'string',
 							'enum'     => array( 'start', 'stop' ),
 							'required' => true,
+						),
+						'retry'  => array(
+							'type'    => 'boolean',
+							'default' => false,
 						),
 					),
 				),
@@ -62,7 +70,7 @@ final class KDNA_SeoWriter_Rest_Fill {
 			'problem' => KDNA_SeoWriter_Fill::cannot_start(),
 		);
 		if ( $request['preview'] ) {
-			$out['preview'] = KDNA_SeoWriter_Fill::preview();
+			$out['preview'] = KDNA_SeoWriter_Fill::preview( (bool) $request['retry'] );
 		}
 		return rest_ensure_response( $out );
 	}
@@ -74,7 +82,7 @@ final class KDNA_SeoWriter_Rest_Fill {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function act( WP_REST_Request $request ) {
-		$status = 'start' === $request['action'] ? KDNA_SeoWriter_Fill::start() : KDNA_SeoWriter_Fill::stop();
+		$status = 'start' === $request['action'] ? KDNA_SeoWriter_Fill::start( (bool) $request['retry'] ) : KDNA_SeoWriter_Fill::stop();
 		if ( is_wp_error( $status ) ) {
 			return $status;
 		}

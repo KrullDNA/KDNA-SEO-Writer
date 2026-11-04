@@ -154,6 +154,7 @@ final class KDNA_SeoWriter_Editor {
 		} else {
 			$html .= '<p><button type="button" class="button kdna-sw-generate" data-kdna-sw-generate>' . esc_html__( 'Generate now', 'kdna-seo-writer' ) . '</button></p>';
 			$html .= '<p class="kdna-sw-msg" role="status" aria-live="polite">' . esc_html( $status['job'] ? __( 'Queued. This updates by itself when Claude has finished.', 'kdna-seo-writer' ) : ( $status['last']['message'] ?? '' ) ) . '</p>';
+			$html .= '<div class="kdna-sw-short"' . ( empty( $status['short'] ) || $status['job'] ? ' hidden' : '' ) . '><p class="description">' . esc_html__( 'Add more text to the page, or let Claude write from the title and the text there is.', 'kdna-seo-writer' ) . '</p><p><button type="button" class="button" data-kdna-sw-write-anyway>' . esc_html__( 'Write anyway', 'kdna-seo-writer' ) . '</button></p></div>';
 		}
 
 		$html .= '<p class="description">' . esc_html( self::mode_note( $status['mode'] ) ) . '</p>';
@@ -277,6 +278,9 @@ final class KDNA_SeoWriter_Editor {
 					'working'    => __( 'Queuing…', 'kdna-seo-writer' ),
 					'queued'     => __( 'Queued. This updates by itself when Claude has finished.', 'kdna-seo-writer' ),
 					'unlock'     => __( 'Unlock', 'kdna-seo-writer' ),
+					'shortHint'  => __( 'Add more text to the page, or let Claude write from the title and the text there is.', 'kdna-seo-writer' ),
+					'writeAnyway' => __( 'Write anyway', 'kdna-seo-writer' ),
+					'stillWaiting' => __( 'Still waiting for the background job runner. WordPress runs these jobs when the site has visitors or someone is in wp-admin, so it can take a few minutes on a quiet site. If nothing changes, look in Tools, Scheduled Actions, Pending, search for kdna_sw and click Run.', 'kdna-seo-writer' ),
 					'review'     => __( 'Open the Review tab', 'kdna-seo-writer' ),
 					'error'      => __( 'Something went wrong. Please try again.', 'kdna-seo-writer' ),
 					'savesDraft' => __( 'Write the content first. Generate now saves it as a draft, then writes the SEO.', 'kdna-seo-writer' ),

@@ -110,7 +110,7 @@
 					polls: 0,
 				},
 				overview: { data: null, loading: false, message: '' },
-				fill: { status: {}, preview: null, problem: '', loading: false, polling: false },
+				fill: { status: {}, preview: null, problem: '', loading: false, polling: false, retry: false, showLeft: false },
 				keyphrases: { items: [], loading: false, loaded: false, search: '', duplicatesOnly: false, open: '', reports: {} },
 
 				/**
@@ -574,7 +574,7 @@
 				 */
 				loadFillPreview: function () {
 					this.fill.loading = true;
-					window.wp.apiFetch( { path: data.restPath + '/fill?preview=1' } )
+					window.wp.apiFetch( { path: data.restPath + '/fill?preview=1' + ( this.fill.retry ? '&retry=1' : '' ) } )
 						.then( ( response ) => {
 							this.fill.preview = response.preview || null;
 							this.fill.status = response.status || {};
@@ -598,7 +598,7 @@
 						return;
 					}
 					this.busy = true;
-					window.wp.apiFetch( { path: data.restPath + '/fill', method: 'POST', data: { action: 'start' } } )
+					window.wp.apiFetch( { path: data.restPath + '/fill', method: 'POST', data: { action: 'start', retry: !! this.fill.retry } } )
 						.then( ( response ) => {
 							this.fill.status = response.status || {};
 							this.fill.preview = null;
@@ -642,11 +642,23 @@
 				},
 
 				fillProgress: function () {
+					if ( this.fill.status.checking ) {
+						return i18n.fillChecking;
+					}
 					return i18n.fillProgress.replace( '%1$d', this.fill.status.done || 0 ).replace( '%2$d', this.fill.status.total || 0 );
 				},
 
+				fillPass: function () {
+					var s = this.fill.status;
+					return s.pass > 1 ? i18n.fillPass.replace( '%1$d', s.pass ).replace( '%2$d', s.passes || 5 ) : '';
+				},
+
 				fillFinished: function () {
-					return i18n.fillFinished.replace( '%1$d', this.fill.status.total || 0 ).replace( '%2$s', this.fill.status.started || '' );
+					var text = i18n.fillFinished.replace( '%1$d', this.fill.status.total || 0 ).replace( '%2$s', this.fill.status.started || '' );
+					if ( this.fill.status.left > 0 ) {
+						text += ' ' + i18n.fillLeft.replace( '%d', this.fill.status.left );
+					}
+					return text;
 				},
 
 				fillSummary: function () {
@@ -655,6 +667,14 @@
 						return i18n.fillNothing;
 					}
 					return i18n.fillSummary.replace( '%1$d', p.items ).replace( '%2$d', p.images );
+				},
+
+				fillLeftTitle: function () {
+					return i18n.fillLeftOut.replace( '%d', this.fill.preview.left_out.count );
+				},
+
+				fillFailed: function () {
+					return i18n.fillFailed.replace( '%d', this.fill.preview.health.failed );
 				},
 
 				fillEstimate: function () {
