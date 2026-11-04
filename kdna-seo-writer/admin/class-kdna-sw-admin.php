@@ -262,6 +262,7 @@ final class KDNA_SeoWriter_Admin {
 			'defaultTab'   => KDNA_SeoWriter_Crypto::has_key() ? 'overview' : 'connection',
 			'i18n'         => array(
 				'genericError'      => __( 'Something went wrong. Please try again.', 'kdna-seo-writer' ),
+				'badKey'            => __( 'That does not look like an Anthropic API key. Keys start with sk-ant-. Nothing was saved. If your browser filled the box in by itself, clear it and paste the key from console.anthropic.com.', 'kdna-seo-writer' ),
 				'testError'         => __( 'The test could not run. Please try again.', 'kdna-seo-writer' ),
 				'confirmRemoveKey'  => __( 'Remove the saved API key? The plugin will stop writing until a new key is added.', 'kdna-seo-writer' ),
 				'confirmClearLocks' => __( 'Clear every lock on the site? Fields people have edited can then be worked on again (existing text is still never replaced without approval).', 'kdna-seo-writer' ),

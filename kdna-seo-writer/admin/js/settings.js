@@ -703,8 +703,17 @@
 				 */
 				save: function ( extra ) {
 					var body = Object.assign( { settings: this.settings }, extra || {} );
-					if ( this.apiKey.trim() !== '' ) {
-						body.api_key = this.apiKey.trim();
+					var typedKey = this.apiKey.trim();
+
+					// Only the Connection tab sends a key, and only something that
+					// looks like one. Browsers and password managers sometimes fill
+					// the key box with a saved login password, even while another
+					// tab is open, and that must never replace the real key.
+					if ( 'connection' === this.tab && typedKey.indexOf( 'sk-ant-' ) === 0 ) {
+						body.api_key = typedKey;
+					} else if ( 'connection' === this.tab && typedKey !== '' ) {
+						this.notice = { text: i18n.badKey, ok: false };
+						return Promise.resolve( false );
 					}
 
 					this.busy = true;

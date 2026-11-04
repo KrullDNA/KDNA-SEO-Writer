@@ -3,7 +3,7 @@ Contributors: kdna
 Tags: seo, yoast, meta description, alt text, ai
 Requires at least: 6.5
 Requires PHP: 8.1
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -40,7 +40,7 @@ It is a backend tool. Public pages load no files, run no queries and are exactly
 
 == Installation ==
 
-1. Upload kdna-seo-writer-1.0.1.zip in Plugins > Add New > Upload Plugin, then activate it.
+1. Upload kdna-seo-writer-1.0.2.zip in Plugins > Add New > Upload Plugin, then activate it.
 2. Make sure Yoast SEO is active.
 3. Get an Anthropic API key:
    * Go to console.anthropic.com and sign in or create an account.
@@ -155,6 +155,10 @@ The SEO titles the plugin writes keep Yoast's %%sep%% and %%sitename%% variables
 Yoast's SEO fields are always kept, including everything the plugin wrote. The plugin's own data (settings, API key, review queue, log) is only removed if "Delete the plugin's own data when the plugin is deleted" is ticked in the Advanced tab.
 
 == Changelog ==
+
+= 1.0.2 =
+* Fix: a browser or password manager filling the API key box with a saved password no longer causes an error when saving other tabs, and can never replace the saved key. Only the Connection tab sends a key, and only one starting with sk-ant-.
+* A rejected key now saves nothing, so the other settings are never left half saved.
 
 = 1.0.1 =
 * Content types with no public pages (such as JetEngine listing items and Elementor templates), and content types Yoast keeps out of search results, are now left out automatically. The Content tab lists them and says why.

@@ -56,7 +56,7 @@ $kdna_sw_tabs = array(
 
 			<div class="kdna-sw-field">
 				<label for="kdna-sw-api-key"><?php esc_html_e( 'API key', 'kdna-seo-writer' ); ?></label>
-				<input id="kdna-sw-api-key" type="password" class="regular-text" autocomplete="off" spellcheck="false" x-model="apiKey"
+				<input id="kdna-sw-api-key" name="kdna_sw_anthropic_key" type="password" class="regular-text" autocomplete="new-password" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" x-model="apiKey"
 					:placeholder="key.saved ? '<?php echo esc_js( __( 'A key is saved. Type a new one to replace it.', 'kdna-seo-writer' ) ); ?>' : 'sk-ant-...'">
 				<p class="description"><?php esc_html_e( 'Create a key at console.anthropic.com under API keys, then paste it here. It is stored encrypted and is never shown again, not even to administrators. Usage is billed to the Anthropic account the key belongs to.', 'kdna-seo-writer' ); ?></p>
 				<p class="kdna-sw-key-status">
