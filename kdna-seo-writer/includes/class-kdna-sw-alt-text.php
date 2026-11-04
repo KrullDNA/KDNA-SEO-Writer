@@ -59,6 +59,13 @@ final class KDNA_SeoWriter_Alt_Text {
 	private const SEND_MAX_BYTES = 4500000;
 
 	/**
+	 * Post meta set while an alt text job is working on an image, and the
+	 * number of times a job stopped part-way on it.
+	 */
+	private const RUNNING_KEY = 'kdna_sw_alt_running';
+	private const CRASHES_KEY = 'kdna_sw_alt_crashes';
+
+	/**
 	 * Image types Claude can read.
 	 */
 	private const SUPPORTED = array( 'image/jpeg', 'image/png', 'image/gif', 'image/webp' );
@@ -230,6 +237,25 @@ final class KDNA_SeoWriter_Alt_Text {
 			return;
 		}
 
+		// If the last job for this image stopped part-way (the server ended it,
+		// usually because the image was too much for it), it is tried once
+		// more. After a second crash it is recorded and left alone, so it
+		// never fails over and over.
+		$running = (int) get_post_meta( $image_id, self::RUNNING_KEY, true );
+		if ( $running > 0 && $running < time() - 10 * MINUTE_IN_SECONDS ) {
+			$crashes = (int) get_post_meta( $image_id, self::CRASHES_KEY, true ) + 1;
+			update_post_meta( $image_id, self::CRASHES_KEY, $crashes );
+			if ( $crashes >= 2 ) {
+				delete_post_meta( $image_id, self::RUNNING_KEY );
+				delete_post_meta( $image_id, self::CRASHES_KEY );
+				KDNA_SeoWriter_State::attempted( 'post', $image_id );
+				KDNA_SeoWriter_State::set_last( 'post', $image_id, 'error', __( 'The server stopped twice while preparing this image, usually because the file is very large. Upload a smaller version (under 2,500 pixels wide), or write its alt text by hand.', 'kdna-seo-writer' ) );
+				KDNA_SeoWriter_State::set_job( 'post', $image_id, false );
+				return;
+			}
+		}
+		update_post_meta( $image_id, self::RUNNING_KEY, time() );
+
 		try {
 			$result = self::generate( $image_id, $context_id );
 		} catch ( \Throwable $e ) {
@@ -239,6 +265,9 @@ final class KDNA_SeoWriter_Alt_Text {
 				'temporary' => false,
 			);
 		}
+
+		delete_post_meta( $image_id, self::RUNNING_KEY );
+		delete_post_meta( $image_id, self::CRASHES_KEY );
 
 		// A temporary problem with Anthropic does not count as a try.
 		if ( empty( $result['temporary'] ) ) {
@@ -526,13 +555,20 @@ final class KDNA_SeoWriter_Alt_Text {
 			return new WP_Error( 'kdna_sw_alt_type', __( 'Claude can only read JPEG, PNG, GIF and WebP images, so this image was skipped.', 'kdna-seo-writer' ) );
 		}
 
-		$file = (string) get_attached_file( $image_id );
-		$size = image_get_intermediate_size( $image_id, 'large' );
-		if ( is_array( $size ) && ! empty( $size['path'] ) ) {
-			$uploads = wp_get_upload_dir();
+		// A smaller copy WordPress has already made is used whenever there is
+		// one, so the (often huge) original never has to be opened and resized.
+		$file    = (string) get_attached_file( $image_id );
+		$uploads = wp_get_upload_dir();
+		foreach ( array( 'large', '1536x1536', 'medium_large', 'woocommerce_single', 'medium' ) as $name ) {
+			$size = image_get_intermediate_size( $image_id, $name );
+			if ( ! is_array( $size ) || empty( $size['path'] ) ) {
+				continue;
+			}
+			$longest = max( (int) ( $size['width'] ?? 0 ), (int) ( $size['height'] ?? 0 ) );
 			$sized   = trailingslashit( $uploads['basedir'] ) . $size['path'];
-			if ( is_readable( $sized ) ) {
+			if ( $longest > 0 && $longest <= self::SEND_MAX_PX * 1.5 && is_readable( $sized ) ) {
 				$file = $sized;
+				break;
 			}
 		}
 		if ( '' === $file || ! is_readable( $file ) ) {
@@ -543,6 +579,19 @@ final class KDNA_SeoWriter_Alt_Text {
 		$too_big    = filesize( $file ) > self::SEND_MAX_BYTES || ( is_array( $dimensions ) && max( (int) $dimensions[0], (int) $dimensions[1] ) > self::SEND_MAX_PX * 1.5 );
 
 		if ( $too_big ) {
+			// Resizing opens the whole image in memory. A very large photo can
+			// use more than the server allows, which stops the job with no
+			// message, so that is checked first.
+			if ( function_exists( 'wp_raise_memory_limit' ) ) {
+				wp_raise_memory_limit( 'image' );
+			}
+			if ( is_array( $dimensions ) && ! self::memory_allows( (int) $dimensions[0], (int) $dimensions[1] ) ) {
+				return new WP_Error(
+					'kdna_sw_alt_too_big',
+					/* translators: 1: width in pixels, 2: height in pixels. */
+					sprintf( __( 'This image is too large for the server to prepare (%1$d by %2$d pixels), and WordPress has no smaller copy of it. Upload a smaller version (under 2,500 pixels wide), or write its alt text by hand.', 'kdna-seo-writer' ), (int) $dimensions[0], (int) $dimensions[1] )
+				);
+			}
 			$editor = wp_get_image_editor( $file );
 			if ( is_wp_error( $editor ) ) {
 				return new WP_Error( 'kdna_sw_alt_resize', __( 'The image is too large to send and could not be resized on this server.', 'kdna-seo-writer' ) );
@@ -569,6 +618,23 @@ final class KDNA_SeoWriter_Alt_Text {
 		}
 
 		return KDNA_SeoWriter_Claude::image_block( $bytes, $mime );
+	}
+
+	/**
+	 * Tells you whether the server has enough free memory to open an image
+	 * of this size for resizing. Allows about 6 bytes a pixel, which covers
+	 * both of PHP's image libraries with room to spare.
+	 *
+	 * @param int $width  Width in pixels.
+	 * @param int $height Height in pixels.
+	 * @return bool
+	 */
+	public static function memory_allows( int $width, int $height ): bool {
+		$limit = function_exists( 'wp_convert_hr_to_bytes' ) ? wp_convert_hr_to_bytes( (string) ini_get( 'memory_limit' ) ) : (int) ini_get( 'memory_limit' );
+		if ( $limit <= 0 ) {
+			return true; // No limit.
+		}
+		return $width * $height * 6 < $limit - memory_get_usage( true );
 	}
 
 	/**

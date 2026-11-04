@@ -59,7 +59,7 @@ function wp_attachment_is_image( $id ) { return isset( $GLOBALS['attachments'][ 
 function wp_get_attachment_caption( $id ) { return $GLOBALS['attachments'][ $id ]['caption'] ?? ''; }
 function wp_get_attachment_image_url( $id, $size = 'thumbnail' ) { return 'https://example.com/uploads/' . $id . '-' . $size . '.png'; }
 function wp_get_attachment_url( $id ) { return 'https://example.com/uploads/' . $id . '.png'; }
-function image_get_intermediate_size( $id, $size ) { return false; }
+function image_get_intermediate_size( $id, $size ) { return $GLOBALS['sizes'][ $id ][ $size ] ?? false; }
 function wp_get_upload_dir() { return [ 'basedir' => sys_get_temp_dir() ]; }
 function wp_check_filetype( $f ) { return [ 'type' => str_ends_with( $f, '.png' ) ? 'image/png' : 'image/jpeg' ]; }
 function wp_basename( $p ) { return basename( $p ); }

@@ -28,6 +28,8 @@ $wpdb->delete( $wpdb->termmeta, array( 'meta_key' => 'kdna_sw_state' ) ); // php
 $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => 'kdna_sw_attempted' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 $wpdb->delete( $wpdb->termmeta, array( 'meta_key' => 'kdna_sw_attempted' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => 'kdna_sw_decorative' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => 'kdna_sw_alt_running' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => 'kdna_sw_alt_crashes' ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 
 // Remove the plugin's waiting background jobs from Action Scheduler's table, if it exists.
 $kdna_sw_as_table = $wpdb->prefix . 'actionscheduler_actions';
