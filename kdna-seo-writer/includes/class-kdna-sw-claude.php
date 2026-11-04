@@ -84,6 +84,24 @@ final class KDNA_SeoWriter_Claude {
 	private const MAX_TOTAL_WAIT = 45;
 
 	/**
+	 * Tells you whether an error is temporary (Anthropic busy, rate limited,
+	 * not reachable, or the answer was cut short), so the item should simply
+	 * be tried again soon rather than left alone for a week.
+	 *
+	 * @param WP_Error $error The error from send() or structured().
+	 * @return bool
+	 */
+	public static function is_temporary( WP_Error $error ): bool {
+		$code = (string) $error->get_error_code();
+		if ( in_array( $code, array( 'kdna_sw_unreachable', 'kdna_sw_truncated', 'kdna_sw_bad_json', 'kdna_sw_api_rate_limit_error', 'kdna_sw_api_overloaded_error', 'kdna_sw_api_api_error', 'kdna_sw_api_timeout_error' ), true ) ) {
+			return true;
+		}
+		$data   = $error->get_error_data();
+		$status = is_array( $data ) ? (int) ( $data['status'] ?? 0 ) : 0;
+		return in_array( $status, self::RETRY_STATUSES, true );
+	}
+
+	/**
 	 * Returns the model chosen in settings.
 	 *
 	 * @return string Model ID.

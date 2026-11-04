@@ -103,8 +103,10 @@ final class KDNA_SeoWriter_Scheduler {
 			return false;
 		}
 
+		// Checked across every group, so the nightly sweep and a Fill run never
+		// book the same item twice.
 		$args = array( $object_type, $id, $subtype, $mode );
-		if ( as_has_scheduled_action( self::JOB, $args, $group ) ) {
+		if ( as_has_scheduled_action( self::JOB, $args ) ) {
 			return true;
 		}
 
@@ -168,6 +170,8 @@ final class KDNA_SeoWriter_Scheduler {
 		$subtype     = (string) $subtype;
 		$mode        = in_array( $mode, array( 'auto', 'manual', 'suggest', 'regenerate' ), true ) ? $mode : 'auto';
 
+		self::give_job_time();
+
 		if ( 'auto' === $mode ) {
 			if ( KDNA_SeoWriter_Usage::limit_reached() ) {
 				KDNA_SeoWriter_State::set_last( $object_type, $id, 'paused', __( 'Paused: the monthly spend limit has been reached.', 'kdna-seo-writer' ) );
@@ -175,11 +179,35 @@ final class KDNA_SeoWriter_Scheduler {
 			}
 			if ( self::server_busy() ) {
 				// Try again in 15 minutes rather than adding to the load.
-				KDNA_SeoWriter_State::set_job( $object_type, $id, false );
-				self::queue( $object_type, $id, $subtype, $mode, 15 * MINUTE_IN_SECONDS );
+				self::later( self::JOB, array( $object_type, $id, $subtype, $mode ) );
 				return;
 			}
 		}
+
+		try {
+			self::do_job( $object_type, $id, $subtype, $mode );
+		} catch ( \Throwable $e ) {
+			// A PHP error on one item is recorded against that item, instead of
+			// the job vanishing as a silent failure in Action Scheduler.
+			KDNA_SeoWriter_State::attempted( $object_type, $id );
+			KDNA_SeoWriter_State::set_last( $object_type, $id, 'error', __( 'Something went wrong while writing for this item. Turn on debug mode and try Generate now to see the details.', 'kdna-seo-writer' ) );
+			KDNA_SeoWriter_State::set_job( $object_type, $id, false );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'KDNA SEO Writer: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			}
+		}
+	}
+
+	/**
+	 * The work of one job, after the spend limit and server load checks.
+	 *
+	 * @param string $object_type Either post or term.
+	 * @param int    $id          Post or term ID.
+	 * @param string $subtype     Post type or taxonomy.
+	 * @param string $mode        auto, manual, suggest or regenerate.
+	 * @return void
+	 */
+	private static function do_job( string $object_type, int $id, string $subtype, string $mode ): void {
 
 		if ( ! self::enabled( $object_type, $subtype ) ) {
 			KDNA_SeoWriter_State::set_last( $object_type, $id, 'nothing', __( 'This content type is set to Off in the Content tab.', 'kdna-seo-writer' ) );
@@ -199,7 +227,13 @@ final class KDNA_SeoWriter_Scheduler {
 		}
 
 		$result = KDNA_SeoWriter_Writer::generate( $object_type, $id, $subtype );
-		KDNA_SeoWriter_State::attempted( $object_type, $id );
+
+		// A temporary problem (Anthropic busy or rate limited, or not reached)
+		// does not count as a try, so the item is picked up again soon instead
+		// of being left out of the sweep for a week.
+		if ( empty( $result['temporary'] ) ) {
+			KDNA_SeoWriter_State::attempted( $object_type, $id );
+		}
 
 		if ( in_array( $result['status'], array( 'skipped', 'error' ), true ) ) {
 			KDNA_SeoWriter_State::set_last( $object_type, $id, $result['status'], (string) $result['message'] );
@@ -219,6 +253,56 @@ final class KDNA_SeoWriter_Scheduler {
 		} else {
 			KDNA_SeoWriter_State::set_last( $object_type, $id, 'nothing', __( 'Claude\'s suggestions matched what is already saved, or were rejected before, so nothing new was added.', 'kdna-seo-writer' ) );
 		}
+	}
+
+	/**
+	 * Gives the job that is starting its own time allowance.
+	 *
+	 * Action Scheduler runs several jobs in one PHP request, and on many hosts
+	 * that request is stopped after 30 seconds. One item can take longer than
+	 * that (reading the page, then one or two answers from Claude), and if PHP
+	 * stops part-way the job is lost and the item is left empty. Resetting the
+	 * clock at the start of every job stops that. The time can be changed with
+	 * the kdna_sw_job_time_limit filter.
+	 *
+	 * @return void
+	 */
+	public static function give_job_time(): void {
+		if ( ! function_exists( 'set_time_limit' ) || str_contains( (string) ini_get( 'disable_functions' ), 'set_time_limit' ) ) {
+			return;
+		}
+		if ( 0 === (int) ini_get( 'max_execution_time' ) ) {
+			return; // Already unlimited.
+		}
+		@set_time_limit( max( 60, (int) apply_filters( 'kdna_sw_job_time_limit', 300 ) ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+	}
+
+	/**
+	 * Books a job again in 15 minutes, because the server is busy.
+	 *
+	 * The job is booked directly rather than through queue(), because queue()
+	 * sees the job that is running right now and would think it is already
+	 * booked. It stays in the same group, so a Fill run waits for it.
+	 *
+	 * @param string       $hook Job hook.
+	 * @param array<mixed> $args Job arguments.
+	 * @return void
+	 */
+	public static function later( string $hook, array $args ): void {
+		if ( ! self::available() ) {
+			return;
+		}
+		as_schedule_single_action( time() + 15 * MINUTE_IN_SECONDS, $hook, $args, self::run_group() );
+	}
+
+	/**
+	 * Returns the group new background jobs belong to: the Fill run's group
+	 * while one is going, so the run counts them, otherwise the normal group.
+	 *
+	 * @return string
+	 */
+	public static function run_group(): string {
+		return KDNA_SeoWriter_Fill::is_running() ? KDNA_SeoWriter_Fill::GROUP : self::GROUP;
 	}
 
 	/**
@@ -503,7 +587,29 @@ final class KDNA_SeoWriter_Scheduler {
 		if ( ! is_array( $load ) || ! isset( $load[0] ) ) {
 			return false;
 		}
-		return (float) $load[0] > (float) apply_filters( 'kdna_sw_max_load', 4.0 );
+		// Load is measured across the whole machine, so it is compared per
+		// processor core. A shared host with 16 cores often runs at a load of
+		// 8 or more while being perfectly responsive.
+		$default = max( 4.0, 1.5 * self::cpu_cores() );
+		return (float) $load[0] > (float) apply_filters( 'kdna_sw_max_load', $default );
+	}
+
+	/**
+	 * Counts the server's processor cores, or 1 when the host does not say.
+	 *
+	 * @return int
+	 */
+	private static function cpu_cores(): int {
+		static $cores = null;
+		if ( null !== $cores ) {
+			return $cores;
+		}
+		$cores = 1;
+		$info  = @is_readable( '/proc/cpuinfo' ) ? @file_get_contents( '/proc/cpuinfo' ) : false; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( is_string( $info ) ) {
+			$cores = max( 1, (int) preg_match_all( '/^processor\s*:/m', $info ) );
+		}
+		return $cores;
 	}
 
 	/**

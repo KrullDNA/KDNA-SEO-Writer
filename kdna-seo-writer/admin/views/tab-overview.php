@@ -27,7 +27,7 @@ $kdna_sw_problem_lists = array(
 
 			<div class="kdna-sw-card kdna-sw-fill">
 				<h2><?php esc_html_e( 'Fill empty fields now', 'kdna-seo-writer' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'For the first run on a site. Works through every item with empty fields, and every image with no alt text, straight away instead of 50 a night. Only empty fields are filled: text that is already there, or that a person has edited, is never touched. Blog posts are saved straight away, and everything else waits in the Review tab, as does all alt text. Jobs run one at a time, spaced out, and pause if the spend limit is reached.', 'kdna-seo-writer' ); ?></p>
+				<p class="description"><?php esc_html_e( 'For the first run on a site. Works through every item with empty fields, and every image with no alt text, straight away instead of 50 a night. When it reaches the end it goes back for anything that could not be finished, so one click covers the whole site. Only empty fields are filled: text that is already there, or that a person has edited, is never touched. Blog posts are saved straight away, and everything else waits in the Review tab, as does all alt text. Jobs run one at a time, spaced out, and pause if the spend limit is reached.', 'kdna-seo-writer' ); ?></p>
 
 				<div class="notice notice-warning inline" x-show="fill.problem"><p x-text="fill.problem"></p></div>
 
@@ -35,6 +35,7 @@ $kdna_sw_problem_lists = array(
 					<div>
 						<div class="kdna-sw-meter kdna-sw-fill-meter" aria-hidden="true"><div class="kdna-sw-meter-bar is-good" :style="'width:' + fillPercent() + '%'"></div></div>
 						<p role="status" aria-live="polite"><strong x-text="fillProgress()"></strong> <span class="kdna-sw-small" x-text="fill.status.started ? '<?php echo esc_js( __( 'Started', 'kdna-seo-writer' ) ); ?> ' + fill.status.started : ''"></span></p>
+						<p class="kdna-sw-small" x-show="fillPass()" x-text="fillPass()"></p>
 						<p class="description"><?php esc_html_e( 'This keeps going in the background, so you can close this page. Leaving it open, or keeping the site busy, can make it go a little faster on quiet sites. Results appear in the Review tab as they arrive.', 'kdna-seo-writer' ); ?></p>
 						<p><button type="button" class="button" @click="stopFill()" :disabled="busy"><?php esc_html_e( 'Stop', 'kdna-seo-writer' ); ?></button></p>
 					</div>
@@ -62,7 +63,7 @@ $kdna_sw_problem_lists = array(
 								</ul>
 								<p x-show="fill.preview.items + fill.preview.images > 0" x-text="fillEstimate()"></p>
 								<p class="kdna-sw-warning" x-show="fill.preview.over_limit"><?php esc_html_e( 'This is likely to go past this month\'s spend limit. Jobs pause when the limit is reached, and carry on next month or when the limit is raised.', 'kdna-seo-writer' ); ?></p>
-								<p class="description" x-show="fill.preview.capped"><?php esc_html_e( 'A run covers up to 2,000 items and 2,000 images. Run it again when it finishes to do the rest.', 'kdna-seo-writer' ); ?></p>
+								<p class="description" x-show="fill.preview.capped"><?php esc_html_e( 'Each pass covers up to 2,000 items and 2,000 images. The run carries on with the rest in its later passes.', 'kdna-seo-writer' ); ?></p>
 								<p>
 									<button type="button" class="button button-primary" @click="startFill()" :disabled="busy || !!fill.problem || !(fill.preview.items + fill.preview.images)"><?php esc_html_e( 'Fill empty fields now', 'kdna-seo-writer' ); ?></button>
 									<button type="button" class="button-link" @click="loadFillPreview()" :disabled="fill.loading"><?php esc_html_e( 'Check again', 'kdna-seo-writer' ); ?></button>

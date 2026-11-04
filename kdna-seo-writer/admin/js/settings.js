@@ -642,11 +642,23 @@
 				},
 
 				fillProgress: function () {
+					if ( this.fill.status.checking ) {
+						return i18n.fillChecking;
+					}
 					return i18n.fillProgress.replace( '%1$d', this.fill.status.done || 0 ).replace( '%2$d', this.fill.status.total || 0 );
 				},
 
+				fillPass: function () {
+					var s = this.fill.status;
+					return s.pass > 1 ? i18n.fillPass.replace( '%1$d', s.pass ).replace( '%2$d', s.passes || 5 ) : '';
+				},
+
 				fillFinished: function () {
-					return i18n.fillFinished.replace( '%1$d', this.fill.status.total || 0 ).replace( '%2$s', this.fill.status.started || '' );
+					var text = i18n.fillFinished.replace( '%1$d', this.fill.status.total || 0 ).replace( '%2$s', this.fill.status.started || '' );
+					if ( this.fill.status.left > 0 ) {
+						text += ' ' + i18n.fillLeft.replace( '%d', this.fill.status.left );
+					}
+					return text;
 				},
 
 				fillSummary: function () {
